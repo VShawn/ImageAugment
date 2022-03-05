@@ -1,211 +1,64 @@
 import os
 import json
-from enum import Enum
-from enum import IntEnum
-from itertools import count
-import imageio
-import imgaug as ia
-from imgaug import augmenters as iaa
-from imgaug import parameters as iap
-from numpy import ndarray
-
-
+from ClassifyPreprocess_DataSetAnalyser import DataSetAnalyser, LabelInfo
+from ClassifyPreprocess_SingleImageAugmenter import SingleImageAugmenter
 class DataSetAugmenter(object):
     '''
     数据集扩充器
     '''
-    def __init__(self) -> None:
-        self.MakeBorderMode = AugmentMakeBorderMode.symmetric # 边缘填充方法 symmetric: 镜面对称填充； edge: 边缘填充；const：固定值填充
-        self.MakeBorderConstValue = (125, 132) # 固定值填充时的值
-        self.Step0_FlipCount = 3 # 翻转次数，0：不翻转，1：水平，2：水平 & 垂直，3：水平 & 垂直 & 水平垂直
-        self.Step1_RotateCount = 100 # 旋转次数
-        self.Step1_RotateMode = AugmentRotateMode.Average # 旋转模式，默认为平均旋转，即每次旋转 360° / (RotateCount + 1)
-        self.Step2_ScaleCount = 2 # 缩放次数，设置为 0 时表示不缩放，只输出原始尺寸图像，否则输出图像为：原始尺寸图像 + ScaleCount 张缩放图像
-        self.Step2_ScaleRange = (0.9, 1.1) # 缩放范围，在范围内随机选取 ScaleCount 个缩放系数执行缩放，默认为 (0.9, 1.1)
-        self.Step3_ContrastAdjustCount = 0 # 对比度调整次数，设置为 0 时表示不调整对比度
-        self.Step3_ContrastAdjust = (0.9, 1.1) # 对比度调整范围，在范围内随机选取 1 个对比度调整系数执行对比度调整，默认为 (0.9, 1.1)
-        self.Step4_GaussianNoiseCount = 2 # 高斯噪声次数，设置为 0 时表示不添加高斯噪声
-        self.Step4_GaussianNoiseRange = (0, 5) # 高斯噪声范围，在范围内随机选取 GaussianNoiseCount 个高斯噪声系数执行高斯噪声，默认为 (0, 5)
-
-        self._step0_fliplr = ia.augmenters.Fliplr(1.0)
-        self._step0_flipud = ia.augmenters.Flipud(1.0)
-        pass
-
-
-    def __json__(self):
-        return {
-            'MakeBorderMode': self.MakeBorderMode,
-            'MakeBorderConstValue': self.MakeBorderConstValue,
-            'Step0_FlipCount': self.Step0_FlipCount,
-            'Step1_RotateCount': self.Step1_RotateCount,
-            'Step1_RotateMode': self.Step1_RotateMode,
-            'Step2_ScaleCount': self.Step2_ScaleCount,
-            'Step2_ScaleRange': self.Step2_ScaleRange,
-            'Step3_ContrastAdjustCount': self.Step3_ContrastAdjustCount,
-            'Step3_ContrastAdjust': self.Step3_ContrastAdjust,
-            'Step4_GaussianNoiseCount': self.Step4_GaussianNoiseCount,
-            'Step4_GaussianNoiseRange': self.Step4_GaussianNoiseRange,
-        }
-        pass
-
-    def ToJson(self) -> str:
-        return json.dumps(self, default=lambda o: o.__json__(), indent=4, separators=(',', ': '))
-
-    def ToJsonFile(self, filePath):
-        with open(filePath, 'w') as f:
-            f.write(self.ToJson())
-        pass
-
-
-    @staticmethod
-    def FromJson(strJson: str) -> 'AugmentAffiner':
-        jobj = json.loads(strJson)
-        ret = AugmentAffiner()
-        ret.MakeBorderMode = AugmentMakeBorderMode(jobj["MakeBorderMode"])
-        ret.MakeBorderConstValue = jobj["MakeBorderConstValue"]
-        ret.Step0_FlipCount = jobj["Step0_FlipCount"]
-        ret.Step1_RotateCount = jobj["Step1_RotateCount"]
-        ret.Step1_RotateMode = AugmentRotateMode(jobj["Step1_RotateMode"])
-        ret.Step2_ScaleCount = jobj["Step2_ScaleCount"]
-        ret.Step2_ScaleRange = jobj["Step2_ScaleRange"]
-        ret.Step3_ContrastAdjustCount = jobj["Step3_ContrastAdjustCount"]
-        ret.Step3_ContrastAdjust = jobj["Step3_ContrastAdjust"]
-        ret.Step4_GaussianNoiseCount = jobj["Step4_GaussianNoiseCount"]
-        ret.Step4_GaussianNoiseRange = jobj["Step4_GaussianNoiseRange"]
-        return ret
-
-    @staticmethod
-    def FromJsonFile(strJson: str) -> 'AugmentAffiner':
-        with open(strJson, 'r') as f:
-            return AugmentAffiner.FromJson(f.read())
-
-    def SetOutputCount(self, outCount: int) -> None:
-        self.Step1_RotateCount = int(outCount / (1 + self.Step0_FlipCount) / (1 + self.Step2_ScaleCount) / (1 + self.Step3_ContrastAdjustCount) / (1 + self.Step4_GaussianNoiseCount))
-        pass
-
-    def RunByImagePath(self, imagePath: str) -> list:
-        '''
-        执行扩充
-        :param imgPath: 图像路径
-        :return: 扩充后的图像列表
-        '''
-        image = imageio.imread(imagePath) # 读取格式为 RGB # 若用 opencv 读取，则格式为 BGR，因此需要转换
-        return self.RunByImageioImage(image)
-
-    def RunByImageioImage(self, image: ndarray) -> list:
-        '''
-        执行扩充，输入为 imageio.imread(imagePath) 读取的图片 RGB 格式。
-        :param image: 图像
-        :return: 扩充后的图像列表
-        '''
-        # Step0: 翻转
-        flipImgs = []
-        flipImgs.append(image)
-        if self.Step0_FlipCount == 1:
-            flipImgs.append(self._step0_fliplr.augment_image(image))
-        elif self.Step0_FlipCount == 2:
-            flipImgs.append(self._step0_fliplr.augment_image(image))
-            flipImgs.append(self._step0_flipud.augment_image(image))
-        elif self.Step0_FlipCount == 3:
-            lr = self._step0_fliplr.augment_image(image)
-            flipImgs.append(lr)
-            flipImgs.append(self._step0_flipud.augment_image(image))
-            flipImgs.append(self._step0_flipud.augment_image(lr))
+    def __init__(self, topPath):
+        self.topPath = topPath
+        self.org_dataset_analyzer = DataSetAnalyser(topPath)
+        # 读取默认 SingleImageAugmenter 配置
+        self.global_augment_settings = SingleImageAugmenter()
+        if not os.path.exists(os.path.join(topPath, 'augment_settings.json')):
+            # 如果 'augment_settings.json' 不存在，则创建一个默认配置
+            self.global_augment_settings.ToJsonFile(os.path.join(topPath, 'augment_settings.json'))
         else:
-            raise Exception('Step0_FlipCount 参数错误')
+            self.global_augment_settings = SingleImageAugmenter.FromJsonFile(os.path.join(topPath, 'augment_settings.json'))
+        return
 
-        # Step1: 旋转
-        rotateImgs = []
-        if self.Step1_RotateCount == 0:
-            rotateImgs = flipImgs[:]
-            pass
-        else:
-            for img in flipImgs:
-                rotateImgs.append(img)
-                if self.Step1_RotateMode == AugmentRotateMode.Average:
-                    r = img
-                    step = 360 / (self.Step1_RotateCount + 1)
-                    rotater = iaa.Affine(rotate=step, mode=self.MakeBorderMode.name, cval=self.MakeBorderConstValue)
-                    for i in range(self.Step1_RotateCount):
-                        r = rotater.augment_image(r)
-                        rotateImgs.append(r)
-                else: # self.Step1_RotateMode == AugmentRotateMode.Random:
-                    rotater = iaa.Affine(rotate=(-180, 180), mode=self.MakeBorderMode.name, cval=self.MakeBorderConstValue)
-                    for i in range(self.Step1_RotateCount):
-                        rotateImgs.append(rotater.augment_image(img))
-
-        # Step2: 缩放
-        scaleImgs = []
-        if self.Step2_ScaleCount == 0:
-            scaleImgs = rotateImgs[:]
-        else:
-            scaler = iaa.Affine(scale=self.Step2_ScaleRange, mode=self.MakeBorderMode.name, cval=self.MakeBorderConstValue)
-            for img in rotateImgs:
-                scaleImgs.append(img)
-                for i in range(self.Step2_ScaleCount):
-                    scaleImgs.append(scaler.augment_image(img))
-
-        # Step3: 对比度调整
-        contrastImgs =[]
-        if self.Step3_ContrastAdjustCount == 0:
-            contrastImgs = scaleImgs[:]
-            pass
-        else:
-            contraster = ia.ContrastNormalization(self.Step3_ContrastAdjust)
-            for img in scaleImgs:
-                contrastImgs.append(img)
-                for i in range(self.Step3_ContrastAdjustCount):
-                    contrastImgs.append(contraster.augment_image(img))
-
-        # Step4: 高斯噪声
-        noiseImgs = []
-        if self.Step4_GaussianNoiseCount == 0:
-            noiseImgs = contrastImgs[:]
-            pass
-        else:
-            noise = iaa.AdditiveGaussianNoise(scale=self.Step4_GaussianNoiseRange)
-            for img in contrastImgs:
-                noiseImgs.append(img)
-                for i in range(self.Step4_GaussianNoiseCount):
-                    noiseImgs.append(noise.augment_image(img))
-
-        return noiseImgs
-
-    def RunByImagePathAndSave(self, imagePath: str, saveDirPath: str) -> None:
-        '''
-        执行扩充并保存
-        :param image: 图像
-        :param saveDirPath: 保存文件夹路径
-        :return: None
-        '''
-        # 文件夹不存在则创建
+    # 扩充数据，并保存到文件夹
+    def Run(self, saveDirPath: str):
+        # 创建保存文件夹
         if not os.path.exists(saveDirPath):
             os.makedirs(saveDirPath)
-        # 提取文件扩展名
-        ext = os.path.splitext(imagePath)[1]
-        # 提取文件名，不包含扩展名
-        fileName = os.path.splitext(os.path.basename(imagePath))[0]
-        imgs = self.RunByImagePath(imagePath)
-        for i, img in enumerate(imgs):
-            savePath = os.path.join(saveDirPath, '{}_#{}{}'.format(fileName, i, ext))
-            imageio.imwrite(savePath, img)
+        # 遍历标签 self.org_dataset_analyzer.labels
+        for label in self.org_dataset_analyzer.labels:
+            # 扩充标签
+            self.__AugmentOneLabel(label, saveDirPath)
             pass
+        return
+
+    def __AugmentOneLabel(self, label: LabelInfo, saveDirPath: str):
+        # 原始数据集文件夹不存在时抛出异常
+        if not os.path.exists(label.label_path):
+            raise Exception('{} is not exist!'.format(label.label_path))
+
+        # 计算当前标签扩充后存储路径
+        saveDirPath = os.path.join(saveDirPath, os.path.basename(label.label_path))
+        if not os.path.exists(saveDirPath):
+            os.makedirs(saveDirPath)
+
+        # 读取当前标签扩充配置
+        label_augmenter = self.global_augment_settings
+        # 若存在 json 文件，则读取该类型定制的扩充配置
+        if os.path.exists(os.path.join(label.label_path, 'augment_settings.json')):
+            label_augmenter = SingleImageAugmenter.FromJsonFile(os.path.join(label.label_path, 'augment_settings.json'))
+        # 计算单个图片需扩充数量
+        augment_one_image_count = label_augmenter.AugmentCount / label.image_count
+        # 创建单个图片扩充器
+        img_augmenter = SingleImageAugmenter.FromJson(label_augmenter.ToJson()) # 拷贝一份
+        img_augmenter.SetAugmentCount(augment_one_image_count) # 设置单个图片扩充数量
+        # 开始扩充
+        for image_path in label.image_paths:
+            img_augmenter.RunByImagePathAndSave(image_path, saveDirPath)
+            pass
+        return
+
+
 
 if __name__ == '__main__':
-    aff = AugmentAffiner()
-    aff.ToJsonFile('test.json')
-    aff2 = AugmentAffiner.FromJsonFile('test.json')
-    print(aff2.ToJson())
-
-    aff2.SetOutputCount(1000)
-    aff2.RunByImagePathAndSave('test.jpg', 'out')
-
-    aff3 = AugmentAffiner()
-    aff3.SetOutputCount(500)
-    aff3.Step1_RotateMode = AugmentRotateMode.Random
-    results = aff3.RunByImagePath('test_gray.jpg')
-    os.makedirs('out_gray', exist_ok=True)
-    for i in range(len(results)):
-        imageio.imwrite('out_gray/test_gray_#' + str(i) + '.jpg', results[i])
-
-
+    # 分析指定文件夹下的文件夹名称，生成一个配置文件
+    aug = DataSetAugmenter('E:\BM3000-TEST\B\FiveCells')
+    aug.Run('Augmented')

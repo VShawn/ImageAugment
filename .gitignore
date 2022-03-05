@@ -2,3 +2,5 @@
 /out_gray
 /test.json
 /test.ci
+/test.csv
+/__pycache__
