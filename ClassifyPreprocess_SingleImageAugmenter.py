@@ -73,7 +73,7 @@ class SingleImageAugmenter(object):
     def FromJson(strJson: str) -> 'SingleImageAugmenter':
         jobj = json.loads(strJson)
         ret = SingleImageAugmenter()
-        ret.AugmentCount = AugmentMakeBorderMode(jobj["AugmentCount"])
+        ret.AugmentCount = jobj["AugmentCount"]
         ret.MakeBorderMode = AugmentMakeBorderMode(jobj["MakeBorderMode"])
         ret.MakeBorderConstValue = jobj["MakeBorderConstValue"]
         ret.Step0_FlipCount = jobj["Step0_FlipCount"]
