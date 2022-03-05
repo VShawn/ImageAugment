@@ -1,40 +1,18 @@
+import os
+import json
 from enum import Enum
 from enum import IntEnum
 from itertools import count
-import os
-import json
 import imageio
 import imgaug as ia
 from imgaug import augmenters as iaa
 from imgaug import parameters as iap
-
 from numpy import ndarray
 
-class ClassifyAugmentSequential(object):
-    def __init__(self) -> None:
-        self.RotateTime = 0 # 旋转次数，设置为负数时表示随机旋转
-        pass
 
-
-class AugmentRotater(object):
-    def __init__(self) -> None:
-        self.OutCount = 0 # 输出图像数量，可以看作是旋转次数
-        self.RotateMode = AugmentRotateMode.Average # 旋转模式，默认为平均旋转，即每次旋转 360° / OutCount
-        pass
-
-class AugmentMakeBorderMode(IntEnum):
-    const = 0,
-    edge = 1,
-    symmetric = 2,
-
-
-class AugmentRotateMode(IntEnum):
-    Random = 1,
-    Average = 2,
-
-class AugmentAffiner(object):
+class DataSetAugmenter(object):
     '''
-    仿射变换图像扩充器，输出图像数量为 (1 + Step0_FlipCount) * (1 + RotateCount) * (1 + ScaleCount) * (1 + GaussianNoiseCount)
+    数据集扩充器
     '''
     def __init__(self) -> None:
         self.MakeBorderMode = AugmentMakeBorderMode.symmetric # 边缘填充方法 symmetric: 镜面对称填充； edge: 边缘填充；const：固定值填充
