@@ -1,0 +1,25 @@
+{
+    "MakeBorderMode": 2,
+    "MakeBorderConstValue": [
+        125,
+        132
+    ],
+    "Step0_FlipCount": 3,
+    "Step1_RotateCount": 27,
+    "Step1_RotateMode": 2,
+    "Step2_ScaleCount": 2,
+    "Step2_ScaleRange": [
+        0.9,
+        1.1
+    ],
+    "Step3_ContrastAdjustCount": 0,
+    "Step3_ContrastAdjust": [
+        0.9,
+        1.1
+    ],
+    "Step4_GaussianNoiseCount": 2,
+    "Step4_GaussianNoiseRange": [
+        0,
+        5
+    ]
+}
