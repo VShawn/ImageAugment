@@ -83,11 +83,11 @@ class AugmentAffiner(object):
     def FromJson(strJson: str) -> 'AugmentAffiner':
         jobj = json.loads(strJson)
         ret = AugmentAffiner()
-        ret.MakeBorderMode = jobj["MakeBorderMode"]
+        ret.MakeBorderMode = AugmentMakeBorderMode(jobj["MakeBorderMode"])
         ret.MakeBorderConstValue = jobj["MakeBorderConstValue"]
         ret.Step0_FlipCount = jobj["Step0_FlipCount"]
         ret.Step1_RotateCount = jobj["Step1_RotateCount"]
-        ret.Step1_RotateMode = jobj["Step1_RotateMode"]
+        ret.Step1_RotateMode = AugmentRotateMode(jobj["Step1_RotateMode"])
         ret.Step2_ScaleCount = jobj["Step2_ScaleCount"]
         ret.Step2_ScaleRange = jobj["Step2_ScaleRange"]
         ret.Step3_ContrastAdjustCount = jobj["Step3_ContrastAdjustCount"]
@@ -105,18 +105,18 @@ class AugmentAffiner(object):
         self.Step1_RotateCount = int(outCount / (1 + self.Step0_FlipCount) / (1 + self.Step2_ScaleCount) / (1 + self.Step3_ContrastAdjustCount) / (1 + self.Step4_GaussianNoiseCount))
         pass
 
-    def Run(self, imagePath: str) -> list:
+    def RunByImagePath(self, imagePath: str) -> list:
         '''
         执行扩充
         :param imgPath: 图像路径
         :return: 扩充后的图像列表
         '''
-        image = imageio.imread(imagePath)
-        return self.RunImg(image)
+        image = imageio.imread(imagePath) # 读取格式为 RGB # 若用 opencv 读取，则格式为 BGR，因此需要转换
+        return self.RunByImageioImage(image)
 
-    def RunImg(self, image: ndarray) -> list:
+    def RunByImageioImage(self, image: ndarray) -> list:
         '''
-        执行扩充
+        执行扩充，输入为 imageio.imread(imagePath) 读取的图片 RGB 格式。
         :param image: 图像
         :return: 扩充后的图像列表
         '''
@@ -193,17 +193,41 @@ class AugmentAffiner(object):
 
         return noiseImgs
 
+    def RunByImagePathAndSave(self, imagePath: str, saveDirPath: str) -> None:
+        '''
+        执行扩充并保存
+        :param image: 图像
+        :param saveDirPath: 保存文件夹路径
+        :return: None
+        '''
+        # 文件夹不存在则创建
+        if not os.path.exists(saveDirPath):
+            os.makedirs(saveDirPath)
+        # 提取文件扩展名
+        ext = os.path.splitext(imagePath)[1]
+        # 提取文件名，不包含扩展名
+        fileName = os.path.splitext(os.path.basename(imagePath))[0]
+        imgs = self.RunByImagePath(imagePath)
+        for i, img in enumerate(imgs):
+            savePath = os.path.join(saveDirPath, '{}_#{}{}'.format(fileName, i, ext))
+            imageio.imwrite(savePath, img)
+            pass
 
 if __name__ == '__main__':
     aff = AugmentAffiner()
-    aff.SetOutputCount(1000)
     aff.ToJsonFile('test.json')
     aff2 = AugmentAffiner.FromJsonFile('test.json')
     print(aff2.ToJson())
 
-    results = aff.Run('test.jpg')
-    os.makedirs('out', exist_ok=True)
+    aff2.SetOutputCount(1000)
+    aff2.RunByImagePathAndSave('test.jpg', 'out')
+
+    aff3 = AugmentAffiner()
+    aff3.SetOutputCount(500)
+    aff3.Step1_RotateMode = AugmentRotateMode.Random
+    results = aff3.RunByImagePath('test_gray.jpg')
+    os.makedirs('out_gray', exist_ok=True)
     for i in range(len(results)):
-        imageio.imwrite('out/test_' + str(i) + '.jpg', results[i])
+        imageio.imwrite('out_gray/test_gray_#' + str(i) + '.jpg', results[i])
 
 
