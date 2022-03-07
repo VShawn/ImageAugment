@@ -10,19 +10,28 @@ class DataSetAugmenter(object):
     '''
     数据集扩充器
     '''
-    def __init__(self, topPath, augment_settings_json_path: str = ""):
+    def __init__(self, topPath, outDirPath, augment_settings_json_path: str = ""):
         '''
         构造函数
         :param topPath: 数据集根目录
         :param augment_setting: 输入的扩充配置文件路径，格式为 {'正则匹配串1' -> SingleImageAugmenter,'正则匹配串2' -> SingleImageAugmenter,}，
         若传入为空则会读取数据集根目录中的配置文件
         '''
+        self.topPath = topPath
+        self.outDirPath = outDirPath
+        self.augment_settings_json_path = augment_settings_json_path
+
+    def __basic_init(self):
+        # 创建保存文件夹
+        if not os.path.exists(self.outDirPath):
+            os.makedirs(self.outDirPath)
+
         # 日志写到当前时间的文件中
         self.logger = logging.getLogger()
         self.logger.setLevel(logging.DEBUG)
         log_format = logging.Formatter('%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s')
         # 使用FileHandler输出到文件
-        fh = logging.FileHandler('{}_{}.log'.format(time.strftime('%Y%m%d_%H%M%S'), os.path.basename(__file__)))
+        fh = logging.FileHandler(os.path.join(self.outDirPath, '{}_{}.log'.format(time.strftime('%Y%m%d_%H%M%S'), os.path.basename(__file__))))
         fh.setLevel(logging.DEBUG)
         fh.setFormatter(log_format)
         # 使用StreamHandler输出到屏幕
@@ -33,22 +42,20 @@ class DataSetAugmenter(object):
         self.logger.addHandler(fh)
         self.logger.addHandler(ch)
 
-
-        self.topPath = topPath
         # 分析数据集，得到标签 self.org_dataset_analyzer.labels
-        self.org_dataset_analyzer = DataSetAnalyser(topPath)
+        self.org_dataset_analyzer = DataSetAnalyser(self.topPath)
 
-        self.logger.info('Start to augment dataset... {}'.format(topPath))
+        self.logger.info('Start to augment dataset... {}'.format(self.topPath))
         self.logger.info('we have {} targets to augment'.format(len(self.org_dataset_analyzer.labels)))
 
         json_path:str = ""
 
         # 确定扩充配置文件路径
-        if augment_settings_json_path != "" and os.path.exists(augment_settings_json_path):
-            json_path = augment_settings_json_path
+        if self.augment_settings_json_path != "" and os.path.exists(self.augment_settings_json_path):
+            json_path = self.augment_settings_json_path
         # 使用数据集根目录中的配置文件路径
         else:
-            json_path = os.path.join(topPath, 'augment_settings.json')
+            json_path = os.path.join(self.topPath, 'augment_settings.json')
             if not os.path.exists(json_path):
                 # 如果 'augment_setting.json' 不存在，则创建一个默认配置
                 augment_setting = SingleImageAugmenter()
@@ -76,30 +83,28 @@ class DataSetAugmenter(object):
         return
 
     # 扩充数据，并保存到文件夹
-    def Run(self, saveDirPath: str):
+    def Run(self):
+        self.__basic_init()
         # 保存分析结果到扩充文件夹
-        self.org_dataset_analyzer.SaveToCsv(os.path.join(saveDirPath, 'dataset_analysis.csv'))
-        # 创建保存文件夹
-        if not os.path.exists(saveDirPath):
-            os.makedirs(saveDirPath)
+        self.org_dataset_analyzer.SaveToCsv(os.path.join(self.outDirPath, 'dataset_analysis.csv'))
         # 遍历标签 self.org_dataset_analyzer.labels
         for i, label in enumerate(self.org_dataset_analyzer.labels):
             self.logger.info('start to augment label: {}, {}/{}'.format(label.label_dir_name, i + 1, len(self.org_dataset_analyzer.labels)))
             # 扩充标签
-            self.__AugmentOneLabel(label, saveDirPath)
+            self.__AugmentOneLabel(label)
             self.logger.info('finish augment label: {}, {}/{}'.format(label.label_dir_name, i + 1, len(self.org_dataset_analyzer.labels)))
             pass
         return
 
-    def __AugmentOneLabel(self, label: LabelInfo, saveDirPath: str):
+    def __AugmentOneLabel(self, label: LabelInfo):
         # 原始数据集文件夹不存在时抛出异常
         if not os.path.exists(label.label_dir_path):
             raise Exception('{} is not exist!'.format(label.label_dir_path))
 
         # 计算当前标签扩充后存储路径
-        saveDirPath = os.path.join(saveDirPath, label.label_dir_name)
-        if not os.path.exists(saveDirPath):
-            os.makedirs(saveDirPath)
+        outDirPath = os.path.join(self.outDirPath, label.label_dir_name)
+        if not os.path.exists(outDirPath):
+            os.makedirs(outDirPath)
 
         # 遍历 self.augment_settings 找到匹配的配置，找不到就用 global_augment_setting
         label_augmenter : SingleImageAugmenter = None
@@ -116,7 +121,7 @@ class DataSetAugmenter(object):
         img_augmenter.SetAugmentCount(augment_one_image_count) # 设置单个图片扩充数量
         # 开始扩充
         for image_path in label.image_paths:
-            img_augmenter.RunByImagePathAndSave(image_path, saveDirPath)
+            img_augmenter.RunByImagePathAndSave(image_path, outDirPath)
             pass
         return
 
@@ -131,10 +136,10 @@ if __name__ == '__main__':
     try:
         opts, args = getopt.getopt(argv,"hi:o:",["i=","o=","c="])
         if len(opts) == 0:
-            print('please set args: -i <input dir path> -o <output dir path>')
-            sys.exit()
-            # inputDir = 'E:\BM3000-TEST\B\FiveCells'
-            # outputDir = 'Augmented'
+            # print('please set args: -i <input dir path> -o <output dir path>')
+            # sys.exit()
+            inputDir = 'E:\BM3000-TEST\B\FiveCells'
+            outputDir = 'Augmented'
         else:
             for opt, arg in opts:
                 if opt == '-h':
@@ -156,5 +161,5 @@ if __name__ == '__main__':
     print('输入为：', inputDir)
     print('输出为：', outputDir)
     print('配置文件', settingsPath)
-    aug = DataSetAugmenter(inputDir)
-    aug.Run(outputDir)
+    aug = DataSetAugmenter(inputDir, outputDir)
+    aug.Run()
