@@ -4,3 +4,5 @@
 /test.ci
 /test.csv
 /__pycache__
+/Augmented
+/*.log

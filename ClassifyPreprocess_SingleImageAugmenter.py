@@ -1,3 +1,4 @@
+from math import floor
 import os
 import json
 from enum import Enum
@@ -7,7 +8,7 @@ import imageio
 import imgaug as ia
 from imgaug import augmenters as iaa
 from imgaug import parameters as iap
-from numpy import ndarray
+from numpy import array, ndarray
 
 class AugmentMakeBorderMode(IntEnum):
     const = 0,
@@ -43,7 +44,7 @@ class SingleImageAugmenter(object):
         pass
 
 
-    def __json__(self):
+    def ToDict(self):
         return {
             'MakeBorderMode': self.MakeBorderMode,
             'MakeBorderConstValue': self.MakeBorderConstValue,
@@ -61,7 +62,7 @@ class SingleImageAugmenter(object):
         pass
 
     def ToJson(self) -> str:
-        return json.dumps(self, default=lambda o: o.__json__(), indent=4, separators=(',', ': '))
+        return json.dumps(self, default=lambda o: o.ToDict(), indent=4, separators=(',', ': '))
 
     def ToJsonFile(self, filePath):
         with open(filePath, 'w') as f:
@@ -70,42 +71,48 @@ class SingleImageAugmenter(object):
 
 
     @staticmethod
-    def FromJson(strJson: str) -> 'SingleImageAugmenter':
-        jobj = json.loads(strJson)
+    def FromDict(dict_obj: dict) -> 'SingleImageAugmenter':
         ret = SingleImageAugmenter()
-        ret.AugmentCount = jobj["AugmentCount"]
-        ret.MakeBorderMode = AugmentMakeBorderMode(jobj["MakeBorderMode"])
-        ret.MakeBorderConstValue = jobj["MakeBorderConstValue"]
-        ret.Step0_FlipCount = jobj["Step0_FlipCount"]
-        # ret.Step1_RotateCount = jobj["Step1_RotateCount"]
-        ret.Step1_RotateMode = AugmentRotateMode(jobj["Step1_RotateMode"])
-        ret.Step2_ScaleCount = jobj["Step2_ScaleCount"]
-        ret.Step2_ScaleRange = jobj["Step2_ScaleRange"]
-        ret.Step3_ContrastAdjustCount = jobj["Step3_ContrastAdjustCount"]
-        ret.Step3_ContrastAdjust = jobj["Step3_ContrastAdjust"]
-        ret.Step4_GaussianNoiseCount = jobj["Step4_GaussianNoiseCount"]
-        ret.Step4_GaussianNoiseRange = jobj["Step4_GaussianNoiseRange"]
+        ret.AugmentCount = dict_obj["AugmentCount"]
+        ret.MakeBorderMode = AugmentMakeBorderMode(dict_obj["MakeBorderMode"])
+        ret.MakeBorderConstValue = dict_obj["MakeBorderConstValue"]
+        ret.Step0_FlipCount = dict_obj["Step0_FlipCount"]
+        # ret.Step1_RotateCount = dict_obj["Step1_RotateCount"]
+        ret.Step1_RotateMode = AugmentRotateMode(dict_obj["Step1_RotateMode"])
+        ret.Step2_ScaleCount = dict_obj["Step2_ScaleCount"]
+        ret.Step2_ScaleRange = dict_obj["Step2_ScaleRange"]
+        ret.Step3_ContrastAdjustCount = dict_obj["Step3_ContrastAdjustCount"]
+        ret.Step3_ContrastAdjust = dict_obj["Step3_ContrastAdjust"]
+        ret.Step4_GaussianNoiseCount = dict_obj["Step4_GaussianNoiseCount"]
+        ret.Step4_GaussianNoiseRange = dict_obj["Step4_GaussianNoiseRange"]
         ret.SetAugmentCount(ret.AugmentCount)
         return ret
+
+    @staticmethod
+    def FromJson(strJson: str) -> 'SingleImageAugmenter':
+        jobj = json.loads(strJson)
+        return SingleImageAugmenter.FromDict(jobj)
 
     @staticmethod
     def FromJsonFile(strJson: str) -> 'SingleImageAugmenter':
         with open(strJson, 'r') as f:
             return SingleImageAugmenter.FromJson(f.read())
 
+
+
     def SetAugmentCount(self, augmentCount:int) -> None:
         '''
         配置好其他参数后，根据 augmentCount 设置旋转次数
         :augmentCount: 扩充出的图片数量，输出数量必然大于或等于这个值
         '''
-        self.AugmentCount  = augmentCount
+        self.AugmentCount  = floor(augmentCount)
         self.Step1_RotateCount = int(augmentCount / (1 + self.Step0_FlipCount) / (1 + self.Step2_ScaleCount) / (1 + self.Step3_ContrastAdjustCount) / (1 + self.Step4_GaussianNoiseCount))
         # 旋转次数超过 360 次，则增加 Step2_ScaleCount
         while self.Step1_RotateCount > 350:
             self.Step2_ScaleCount += 1
-            self.Step1_RotateCount = int(augmentCount / (1 + self.Step0_FlipCount) / (1 + self.Step2_ScaleCount) / (1 + self.Step3_ContrastAdjustCount) / (1 + self.Step4_GaussianNoiseCount))
+            self.Step1_RotateCount = int(self.AugmentCount / (1 + self.Step0_FlipCount) / (1 + self.Step2_ScaleCount) / (1 + self.Step3_ContrastAdjustCount) / (1 + self.Step4_GaussianNoiseCount))
         # 旋转次数为 0 则减少其他操作次数
-        while self.Step1_RotateCount == 0:
+        while self.Step1_RotateCount < 5 and self.Step1_RotateCount < self.AugmentCount:
             if self.Step0_FlipCount > 0:
                 self.Step0_FlipCount -= 1
             elif self.Step2_ScaleCount > 0:
@@ -114,7 +121,7 @@ class SingleImageAugmenter(object):
                 self.Step3_ContrastAdjustCount -= 1
             elif self.Step4_GaussianNoiseCount > 0:
                 self.Step4_GaussianNoiseCount -= 1
-            self.Step1_RotateCount = int(augmentCount / (1 + self.Step0_FlipCount) / (1 + self.Step2_ScaleCount) / (1 + self.Step3_ContrastAdjustCount) / (1 + self.Step4_GaussianNoiseCount))
+            self.Step1_RotateCount = int(self.AugmentCount / (1 + self.Step0_FlipCount) / (1 + self.Step2_ScaleCount) / (1 + self.Step3_ContrastAdjustCount) / (1 + self.Step4_GaussianNoiseCount))
 
     def RunByImagePath(self, imagePath: str) -> list:
         '''

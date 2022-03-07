@@ -10,13 +10,14 @@ class LabelInfo(object):
     """
     标签信息，包括标签名称、标签值、图像数量、标签文件夹路径
     """
-    def __init__(self, label_main_name: str, label_sub_index_name: str, label_value: int, label_path: str):
+    def __init__(self, label_main_name: str, label_sub_index_name: str, label_value: int, label_dir_path: str):
         self.label_main_name = label_main_name
         self.label_sub_index_name = label_sub_index_name
         self.label_name = '{}{}'.format(label_main_name, label_sub_index_name)
         self.label_value = label_value
-        self.label_path = label_path
-        self.image_paths = [os.path.join(label_path, file) for file in os.listdir(label_path) if (file.lower().endswith('.bmp') or file.lower().endswith('.jpg'))]
+        self.label_dir_path = label_dir_path
+        self.label_dir_name = os.path.basename(label_dir_path)
+        self.image_paths = [os.path.join(label_dir_path, file) for file in os.listdir(label_dir_path) if (file.lower().endswith('.bmp') or file.lower().endswith('.jpg') or file.lower().endswith('.png'))]
         # 文件夹内的 bmp jpg 图片数量
         self.image_count = len(self.image_paths)
 
@@ -44,7 +45,7 @@ class DataSetAnalyser(object):
         ciContent = "LabelName,LabelValue,LabelPath,MainName,SubIndex\n"
         for label in self.labels:
             # ciContent += '{}{} {} {} {} {}\n'.format(name1, subIndex, index, name1, int(subIndex), folder)
-            ciContent += '{},{},{},{},{}\n'.format(label.label_name, label.label_value, label.label_path, label.label_main_name, label.label_sub_index_name)
+            ciContent += '{},{},{},{},{}\n'.format(label.label_name, label.label_value, label.label_dir_path, label.label_main_name, label.label_sub_index_name)
         with open(savePath, 'w') as f:
             f.write(ciContent)
 
