@@ -2,6 +2,9 @@ import os
 import json
 from dataclasses import dataclass
 import struct
+from typing import List
+
+from cv2 import RETR_CCOMP
 
 CONST_NeedTrain = "_NeedTrain"
 CONST_BigPic = "_BigPic"
@@ -25,13 +28,15 @@ class DataSetAnalyser(object):
     """
     分析指定数据集文件夹下的文件夹名称，生成一个标签配置文件
     """
-    def __init__(self, folderPath: str):
-        self.SetPath(folderPath)
+    def __init__(self):
         return
+
+    def SetLabelInfos(self, labels: List[LabelInfo]) -> None:
+        self.labels = labels
 
     def SetPath(self, folderPath: str) -> None:
         self.folderPath = folderPath
-        self.labels = []
+        self.labels: List[LabelInfo] = []
         # 获取文件夹下的所有文件夹
         folderList = [folder for folder in os.listdir(folderPath) if (CONST_NeedTrain in folder and '$' in folder)]
         # 遍历文件夹提取文件夹名称
@@ -49,7 +54,24 @@ class DataSetAnalyser(object):
         with open(savePath, 'w') as f:
             f.write(ciContent)
 
+    @staticmethod
+    def ReadFromCsv(filePath: str) -> 'DataSetAnalyser':
+        labels: List[LabelInfo] = []
+        with open(filePath, 'r') as f:
+            for i, line in enumerate(f.readlines()):
+                if i == 0:
+                    continue
+                line = line.replace('\n', '')
+                # 分割字符串
+                [label_name, label_value, label_dir_path, label_main_name, label_sub_index_name] = line.split(',')
+                labels.append(LabelInfo(label_main_name, label_sub_index_name, int(label_value), label_dir_path))
+        ret = DataSetAnalyser()
+        ret.SetLabelInfos(labels)
+        return ret
+
 if __name__ == '__main__':
     # 分析指定文件夹下的文件夹名称，生成一个配置文件
-    analyser = DataSetAnalyser('E:\BM3000-TEST\B\FiveCells')
+    analyser = DataSetAnalyser()
+    analyser.SetPath('E:\BM3000-TEST\B\FiveCells')
     analyser.SaveToCsv("test.csv")
+    a2 = DataSetAnalyser.ReadFromCsv("test.csv")

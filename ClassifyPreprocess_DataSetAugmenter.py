@@ -1,15 +1,19 @@
-from genericpath import exists
-from importlib.resources import path
-from pickle import NONE
-import sys, getopt, os, json, re, time
+import sys
+import getopt
+import os
+import json
+import re
+import time
 import logging
-from numpy import array
 from ClassifyPreprocess_DataSetAnalyser import DataSetAnalyser, LabelInfo
 from ClassifyPreprocess_SingleImageAugmenter import SingleImageAugmenter
+
+
 class DataSetAugmenter(object):
     '''
     数据集扩充器
     '''
+
     def __init__(self, topPath, outDirPath, augment_settings_json_path: str = ""):
         '''
         构造函数
@@ -43,12 +47,13 @@ class DataSetAugmenter(object):
         self.logger.addHandler(ch)
 
         # 分析数据集，得到标签 self.org_dataset_analyzer.labels
-        self.org_dataset_analyzer = DataSetAnalyser(self.topPath)
+        self.org_dataset_analyzer = DataSetAnalyser()
+        self.org_dataset_analyzer.SetPath(self.topPath)
 
         self.logger.info('Start to augment dataset... {}'.format(self.topPath))
         self.logger.info('we have {} targets to augment'.format(len(self.org_dataset_analyzer.labels)))
 
-        json_path:str = ""
+        json_path: str = ""
 
         # 确定扩充配置文件路径
         if self.augment_settings_json_path != "" and os.path.exists(self.augment_settings_json_path):
@@ -72,7 +77,7 @@ class DataSetAugmenter(object):
         logging.info('reading setting from: {}'.format(json_path))
         # 读取 json 配置文件
         tmp_dict = json.load(open(json_path, 'r'))
-        self.augment_settings = {k:SingleImageAugmenter.FromDict(v) for k,v in tmp_dict.items()}
+        self.augment_settings = {k: SingleImageAugmenter.FromDict(v) for k, v in tmp_dict.items()}
 
         # 检查 self.augment_settings 中是否有 'global'
         if 'global' in self.augment_settings:
@@ -86,7 +91,7 @@ class DataSetAugmenter(object):
     def Run(self):
         self.__basic_init()
         # 保存分析结果到扩充文件夹
-        self.org_dataset_analyzer.SaveToCsv(os.path.join(self.outDirPath, 'dataset_analysis.csv'))
+        self.org_dataset_analyzer.SaveToCsv(os.path.join(self.outDirPath, 'label_info.csv'))
         # 遍历标签 self.org_dataset_analyzer.labels
         for i, label in enumerate(self.org_dataset_analyzer.labels):
             self.logger.info('start to augment label: {}, {}/{}'.format(label.label_dir_name, i + 1, len(self.org_dataset_analyzer.labels)))
@@ -107,7 +112,7 @@ class DataSetAugmenter(object):
             os.makedirs(outDirPath)
 
         # 遍历 self.augment_settings 找到匹配的配置，找不到就用 global_augment_setting
-        label_augmenter : SingleImageAugmenter = None
+        label_augmenter: SingleImageAugmenter = None
         for key in self.augment_settings.keys():
             if re.search(key, label.label_dir_name, re.I) or re.search(key, label.label_name, re.I):
                 label_augmenter = self.augment_settings[key]
@@ -117,14 +122,13 @@ class DataSetAugmenter(object):
         # 计算单个图片需扩充数量
         augment_one_image_count = label_augmenter.AugmentCount / label.image_count
         # 创建单个图片扩充器
-        img_augmenter = SingleImageAugmenter.FromJson(label_augmenter.ToJson()) # 拷贝一份
-        img_augmenter.SetAugmentCount(augment_one_image_count) # 设置单个图片扩充数量
+        img_augmenter = SingleImageAugmenter.FromJson(label_augmenter.ToJson())  # 拷贝一份
+        img_augmenter.SetAugmentCount(augment_one_image_count)  # 设置单个图片扩充数量
         # 开始扩充
         for image_path in label.image_paths:
             img_augmenter.RunByImagePathAndSave(image_path, outDirPath)
             pass
         return
-
 
 
 if __name__ == '__main__':
@@ -134,7 +138,7 @@ if __name__ == '__main__':
     settingsPath = ''
     # 读取输入参数
     try:
-        opts, args = getopt.getopt(argv,"hi:o:",["i=","o=","c="])
+        opts, args = getopt.getopt(argv, "hi:o:", ["i=", "o=", "c="])
         if len(opts) == 0:
             # print('please set args: -i <input dir path> -o <output dir path>')
             # sys.exit()
