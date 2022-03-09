@@ -8,28 +8,31 @@ import logging
 from ClassifyPreprocess_DatasetAnalyser import DatasetAnalyser, LabelInfo
 
 
-class TrainingSettings:
+class ClassifyTraning_Settings:
     '''
     单次训练参数配置类，将被保存到 checkpoint 文件同目录
     '''
 
     def __init__(self) -> None:
-        self.DatasetPath = ""
-        self.LabelCount = 0  # 类别数量
-        self.InputSize = (224, 224)  # 输入图像大小
-        self.BatchSize = 32  # 批次大小
-        self.Epochs = 10  # 迭代次数
-        self.LR = 0.001  # 初始学习率
-        self.ResumeFrom = ""  # 恢复训练的模型路径
-        self.ResumeLR = 0.001  # 恢复训练时的学习率
-        self.UseGpuCount = 1  # 用几个GPU训练，0 则用 CPU 训练
-        self.OutPutPath = ""  # 输出模型路径
+        self.ProjectName: str = "Model"
+        self.DatasetPath: str = ""
+        self.DatasetLabelInfoCsvPath: str = ""
+        self.LabelCount: int = 0  # 类别数量
+        self.InputSize: int = 224  # 输入图像大小
+        self.BatchSize: int = 32  # 批次大小，每次喂给模型的样本数量。
+        self.Epochs: int = 10  # 迭代轮数
+        self.LR: float = 0.001  # 初始学习率
+        self.ResumeEpoch: int = 0  # 恢复从哪个 Epoch 恢复训练
+        self.ResumeLR: float = 0.001  # 恢复训练时的学习率
+        self.UseGpuCount: int = 1  # 用几个GPU训练，0 则用 CPU 训练
+        self.OutputDirPath: str = "Out"  # 输出模型路径
 
     def SetDatasetPath(self, dataSetPath: str):
         '''
         设置数据集位置
         '''
         self.DatasetPath = dataSetPath
+        self.DatasetPath = os.path.join(self.DatasetPath, 'label_info.csv')
         self.Verdiate()
         pass
 
@@ -41,7 +44,7 @@ class TrainingSettings:
             raise Exception("DatasetPath is empty")
         # 确认数据集存在
         assert(os.path.isdir(self.DatasetPath))
-        assert(os.path.exists(os.path.join(self.DatasetPath, 'label_info.csv')))
+        assert(os.path.exists(self.DatasetLabelInfoCsvPath))
         # 确认数据集中标签数量正确
         dataSetAnalyser = DatasetAnalyser.ReadFromCsv(os.path.join(self.DatasetPath, 'label_info.csv'))
         self.LabelCount = len(dataSetAnalyser.labels)
@@ -60,8 +63,8 @@ class TrainingSettings:
         return self.__dict__
 
     @staticmethod
-    def from_dict(settings: dict) -> 'TrainingSettings':
-        ret = TrainingSettings()
+    def from_dict(settings: dict) -> 'ClassifyTraning_Settings':
+        ret = ClassifyTraning_Settings()
         for key in ret.__dict__:
             if key in settings:
                 ret.__dict__[key] = settings[key]
@@ -77,19 +80,19 @@ class TrainingSettings:
         pass
 
     @staticmethod
-    def from_json(strJson: str) -> 'TrainingSettings':
+    def from_json(strJson: str) -> 'ClassifyTraning_Settings':
         jobj = json.loads(strJson)
-        return TrainingSettings.from_dict(jobj)
+        return ClassifyTraning_Settings.from_dict(jobj)
 
     @staticmethod
-    def from_json_file(strJson: str) -> 'TrainingSettings':
+    def from_json_file(strJson: str) -> 'ClassifyTraning_Settings':
         with open(strJson, 'r') as f:
-            return TrainingSettings.from_json(f.read())
+            return ClassifyTraning_Settings.from_json(f.read())
 
 
 if __name__ == '__main__':
-    settings = TrainingSettings()
+    settings = ClassifyTraning_Settings()
     settings.SetDatasetPath('Augmented')
     print(settings.to_dict())
     print(settings.to_json())
-    print(TrainingSettings.from_json(settings.to_json()).to_json())
+    print(ClassifyTraning_Settings.from_json(settings.to_json()).to_json())

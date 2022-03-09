@@ -3,14 +3,12 @@ import os
 import json
 from enum import Enum
 from enum import IntEnum
-from itertools import count
 import cv2
 import imageio
 import imgaug as ia
 import numpy as np
 from imgaug import augmenters as iaa
 from imgaug import parameters as iap
-from numpy import array, double, ndarray
 
 
 class AugmentMakeBorderMode(IntEnum):
@@ -131,10 +129,10 @@ class SingleImageAugmenter(object):
         :return: 扩充后的图像列表
         '''
         # image = imageio.imread(image_path)  # 读取格式为 RGB # 若用 opencv 读取，则格式为 BGR，因此需要转换
-        image = self.open_image(image_path)
+        image:np.ndarray = self.open_image(image_path)
         return self.run_by_image_data(image)
 
-    def run_by_image_data(self, image) -> list:
+    def run_by_image_data(self, image: np.ndarray) -> list:
         '''
         执行扩充，输入为 imageio.imread(image_path) 读取的图片 RGB 格式。
         :param image: 图像
@@ -237,19 +235,19 @@ class SingleImageAugmenter(object):
             pass
 
     @staticmethod
-    def open_image(path: str, resize_to: int = None, crop_random_rate: tuple[double, double] = None) -> ndarray:
+    def open_image(path: str, resize_to: int = None, random_crop_rate: tuple[float, float] = None) -> np.ndarray:
         """
         使用 opencv 打开图片
         path: 图片路径
         resize_to: 输出图片的尺寸，为 None 时直接输出原始尺寸，当图像大于 resize_to 时压缩图像，小于 resize_to 时以镜像方式扩充边缘
-        crop_random_rate: 边缘随机裁切比例， 输入(0, 0.1) 表示随机裁切掉 0 - 10% 的边缘尺寸
+        random_crop_rate: 边缘随机裁切比例， 输入(0, 0.1) 表示随机裁切掉 0 - 10% 的边缘尺寸
         """
         bgr = cv2.imread(path)
         # BGR to RGB
         rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-        if crop_random_rate is not None:
+        if random_crop_rate is not None:
             # 随机裁切
-            aug = iaa.Crop(percent=crop_random_rate, keep_size=False)
+            aug = iaa.Crop(percent=random_crop_rate, keep_size=False)
             rgb = aug.augment_image(rgb)
         if resize_to is not None:
             # 尺寸大于目标尺寸时，保持宽高比缩小
@@ -277,13 +275,13 @@ class SingleImageAugmenter(object):
 if __name__ == '__main__':
     images = []
     ia.imshow(SingleImageAugmenter.open_image('test.jpg'))
-    images.append(SingleImageAugmenter.open_image('test.jpg', resize_to=256, crop_random_rate=(0.0, 0.5)))
-    images.append(SingleImageAugmenter.open_image('test.jpg', resize_to=256, crop_random_rate=(0.0, 0.5)))
-    images.append(SingleImageAugmenter.open_image('test.jpg', resize_to=256, crop_random_rate=(0.0, 0.5)))
-    images.append(SingleImageAugmenter.open_image('test.jpg', resize_to=256, crop_random_rate=(0.0, 0.5)))
-    images.append(SingleImageAugmenter.open_image('test.jpg', resize_to=256, crop_random_rate=(0.0, 0.5)))
-    images.append(SingleImageAugmenter.open_image('test.jpg', resize_to=256, crop_random_rate=(0.0, 0.5)))
-    images.append(SingleImageAugmenter.open_image('test.jpg', resize_to=256, crop_random_rate=(0.0, 0.5)))
+    images.append(SingleImageAugmenter.open_image('test.jpg', resize_to=256, random_crop_rate=(0.0, 0.5)))
+    images.append(SingleImageAugmenter.open_image('test.jpg', resize_to=256, random_crop_rate=(0.0, 0.5)))
+    images.append(SingleImageAugmenter.open_image('test.jpg', resize_to=256, random_crop_rate=(0.0, 0.5)))
+    images.append(SingleImageAugmenter.open_image('test.jpg', resize_to=256, random_crop_rate=(0.0, 0.5)))
+    images.append(SingleImageAugmenter.open_image('test.jpg', resize_to=256, random_crop_rate=(0.0, 0.5)))
+    images.append(SingleImageAugmenter.open_image('test.jpg', resize_to=256, random_crop_rate=(0.0, 0.5)))
+    images.append(SingleImageAugmenter.open_image('test.jpg', resize_to=256, random_crop_rate=(0.0, 0.5)))
     ia.imshow(np.hstack(images))
 
     aff = SingleImageAugmenter()
