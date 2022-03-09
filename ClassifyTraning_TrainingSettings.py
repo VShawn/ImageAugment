@@ -5,7 +5,7 @@ import json
 import re
 import time
 import logging
-from ClassifyPreprocess_DataSetAnalyser import DataSetAnalyser, LabelInfo
+from ClassifyPreprocess_DatasetAnalyser import DatasetAnalyser, LabelInfo
 
 
 class TrainingSettings:
@@ -14,7 +14,7 @@ class TrainingSettings:
     '''
 
     def __init__(self) -> None:
-        self.DataSetPath = ""
+        self.DatasetPath = ""
         self.LabelCount = 0  # 类别数量
         self.InputSize = (224, 224)  # 输入图像大小
         self.BatchSize = 32  # 批次大小
@@ -25,11 +25,11 @@ class TrainingSettings:
         self.UseGpuCount = 1  # 用几个GPU训练，0 则用 CPU 训练
         self.OutPutPath = ""  # 输出模型路径
 
-    def SetDataSetPath(self, dataSetPath: str):
+    def SetDatasetPath(self, dataSetPath: str):
         '''
         设置数据集位置
         '''
-        self.DataSetPath = dataSetPath
+        self.DatasetPath = dataSetPath
         self.Verdiate()
         pass
 
@@ -37,15 +37,16 @@ class TrainingSettings:
         '''
         验证配置是否正确，有问题会抛出异常，每次训练前建议都调用检查一下
         '''
-        if self.DataSetPath == "":
-            raise Exception("DataSetPath is empty")
+        if self.DatasetPath == "":
+            raise Exception("DatasetPath is empty")
         # 确认数据集存在
-        assert(os.path.isdir(self.DataSetPath))
-        assert(os.path.exists(os.path.join(self.DataSetPath, 'label_info.csv')))
+        assert(os.path.isdir(self.DatasetPath))
+        assert(os.path.exists(os.path.join(self.DatasetPath, 'label_info.csv')))
         # 确认数据集中标签数量正确
-        dataSetAnalyser = DataSetAnalyser.ReadFromCsv(os.path.join(self.DataSetPath, 'label_info.csv'))
+        dataSetAnalyser = DatasetAnalyser.ReadFromCsv(os.path.join(self.DatasetPath, 'label_info.csv'))
         self.LabelCount = len(dataSetAnalyser.labels)
         assert(self.outPutPath != "")
+        assert(self.LabelCount > 0)
         assert(self.LabelCount > 0)
         assert(self.BatchSize > 0)
         assert(self.LR > 0)
@@ -55,11 +56,11 @@ class TrainingSettings:
             assert(self.ResumeLR > 0)
         pass
 
-    def ToDict(self):
+    def to_dict(self):
         return self.__dict__
 
     @staticmethod
-    def FromDict(settings: dict) -> 'TrainingSettings':
+    def from_dict(settings: dict) -> 'TrainingSettings':
         ret = TrainingSettings()
         for key in ret.__dict__:
             if key in settings:
@@ -67,28 +68,28 @@ class TrainingSettings:
         ret.Verdiate()
         return ret
 
-    def ToJson(self) -> str:
-        return json.dumps(self, default=lambda o: o.ToDict(), indent=4, separators=(',', ': '))
+    def to_json(self) -> str:
+        return json.dumps(self, default=lambda o: o.to_dict(), indent=4, separators=(',', ': '))
 
-    def ToJsonFile(self, filePath):
+    def to_json_file(self, filePath):
         with open(filePath, 'w') as f:
-            f.write(self.ToJson())
+            f.write(self.to_json())
         pass
 
     @staticmethod
-    def FromJson(strJson: str) -> 'TrainingSettings':
+    def from_json(strJson: str) -> 'TrainingSettings':
         jobj = json.loads(strJson)
-        return TrainingSettings.FromDict(jobj)
+        return TrainingSettings.from_dict(jobj)
 
     @staticmethod
-    def FromJsonFile(strJson: str) -> 'TrainingSettings':
+    def from_json_file(strJson: str) -> 'TrainingSettings':
         with open(strJson, 'r') as f:
-            return TrainingSettings.FromJson(f.read())
+            return TrainingSettings.from_json(f.read())
 
 
 if __name__ == '__main__':
     settings = TrainingSettings()
-    settings.SetDataSetPath('Augmented')
-    print(settings.ToDict())
-    print(settings.ToJson())
-    print(TrainingSettings.FromJson(settings.ToJson()).ToJson())
+    settings.SetDatasetPath('Augmented')
+    print(settings.to_dict())
+    print(settings.to_json())
+    print(TrainingSettings.from_json(settings.to_json()).to_json())

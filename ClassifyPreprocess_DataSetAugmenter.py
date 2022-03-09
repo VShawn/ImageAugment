@@ -5,11 +5,11 @@ import json
 import re
 import time
 import logging
-from ClassifyPreprocess_DataSetAnalyser import DataSetAnalyser, LabelInfo
+from ClassifyPreprocess_DatasetAnalyser import DatasetAnalyser, LabelInfo
 from ClassifyPreprocess_SingleImageAugmenter import SingleImageAugmenter
 
 
-class DataSetAugmenter(object):
+class DatasetAugmenter(object):
     '''
     数据集扩充器
     '''
@@ -47,7 +47,7 @@ class DataSetAugmenter(object):
         self.logger.addHandler(ch)
 
         # 分析数据集，得到标签 self.org_dataset_analyzer.labels
-        self.org_dataset_analyzer = DataSetAnalyser()
+        self.org_dataset_analyzer = DatasetAnalyser()
         self.org_dataset_analyzer.SetPath(self.topPath)
 
         self.logger.info('Start to augment dataset... {}'.format(self.topPath))
@@ -71,13 +71,13 @@ class DataSetAugmenter(object):
                     pass
                 # 保存 dict 到 json
                 with open(json_path, 'w') as f:
-                    f.write(json.dumps({k: v.ToDict() for k, v in settings.items()}, indent=4, separators=(',', ': ')))
+                    f.write(json.dumps({k: v.to_dict() for k, v in settings.items()}, indent=4, separators=(',', ': ')))
                 print("we generated a default augment_settings.json in '{}'".format(json_path))
 
         logging.info('reading setting from: {}'.format(json_path))
         # 读取 json 配置文件
         tmp_dict = json.load(open(json_path, 'r'))
-        self.augment_settings = {k: SingleImageAugmenter.FromDict(v) for k, v in tmp_dict.items()}
+        self.augment_settings = {k: SingleImageAugmenter.from_dict(v) for k, v in tmp_dict.items()}
 
         # 检查 self.augment_settings 中是否有 'global'
         if 'global' in self.augment_settings:
@@ -122,11 +122,11 @@ class DataSetAugmenter(object):
         # 计算单个图片需扩充数量
         augment_one_image_count = label_augmenter.AugmentCount / label.image_count
         # 创建单个图片扩充器
-        img_augmenter = SingleImageAugmenter.FromJson(label_augmenter.ToJson())  # 拷贝一份
-        img_augmenter.SetAugmentCount(augment_one_image_count)  # 设置单个图片扩充数量
+        img_augmenter = SingleImageAugmenter.from_json(label_augmenter.to_json())  # 拷贝一份
+        img_augmenter.set_augment_count(augment_one_image_count)  # 设置单个图片扩充数量
         # 开始扩充
         for image_path in label.image_paths:
-            img_augmenter.RunByImagePathAndSave(image_path, outDirPath)
+            img_augmenter.run_by_image_path_and_save(image_path, outDirPath)
             pass
         return
 
@@ -165,5 +165,5 @@ if __name__ == '__main__':
     print('输入为：', inputDir)
     print('输出为：', outputDir)
     print('配置文件', settingsPath)
-    aug = DataSetAugmenter(inputDir, outputDir)
+    aug = DatasetAugmenter(inputDir, outputDir)
     aug.Run()

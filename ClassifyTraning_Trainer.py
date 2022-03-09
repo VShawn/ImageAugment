@@ -9,8 +9,8 @@ import torch
 import turtle
 from torch import nn, Tensor, optim
 from torchvision import models
-from torch.utils.data import Dataset as TorchDataSet, DataLoader
-from ClassifyPreprocess_DataSetAnalyser import DataSetAnalyser, LabelInfo
+from torch.utils.data import Dataset as TorchDataset, DataLoader
+from ClassifyPreprocess_DatasetAnalyser import DatasetAnalyser, LabelInfo
 from ClassifyTraning_TrainingSettings import TrainingSettings
 
 
