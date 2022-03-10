@@ -51,7 +51,7 @@ class ClassifyTraning_Dataset(TorchDataset):
         da = DatasetAnalyser.ReadFromCsv(label_info_csv_path)
         train_image_paths = []
         train_image_labels = []
-        validate_image_paths = []
+        eval_image_paths = []
         validate_image_labels = []
         for label in da.labels:
             # 随机打乱文件路径
@@ -63,15 +63,18 @@ class ClassifyTraning_Dataset(TorchDataset):
             p2 = label.image_paths[validate_count:]
             l1 = labels[0:validate_count]
             l2 = labels[validate_count:]
-            validate_image_labels.extend(p1)
-            validate_image_paths.extend(l1)
+            eval_image_paths.extend(p1)
+            validate_image_labels.extend(l1)
             train_image_paths.extend(p2)
             train_image_labels.extend(l2)
             assert(len(p1) + len(p2) == label.image_count)
         assert(len(train_image_paths) == len(train_image_labels))
-        assert(len(validate_image_paths) == len(validate_image_labels))
+        assert(len(eval_image_paths) == len(validate_image_labels))
+        assert(os.path.exists(train_image_paths[0]))
+        assert(os.path.exists(eval_image_paths[0]))
+
         train_dataset = ClassifyTraning_Dataset(train_image_paths, train_image_labels, input_image_size)
-        validate_dataset = ClassifyTraning_Dataset(validate_image_paths, validate_image_labels, input_image_size)
+        validate_dataset = ClassifyTraning_Dataset(eval_image_paths, validate_image_labels, input_image_size)
         return train_dataset, validate_dataset
 
     @staticmethod
@@ -84,6 +87,7 @@ if __name__ == '__main__':
     # 测试生成训练集和测试集
     td, vd = ClassifyTraning_Dataset.get_train_validate_dataset('D:\\UritWorks\\AI\\image_preprocess\\Augmented\\label_info.csv', 257, 0.2)
     loader = DataLoader(td, batch_size=32, shuffle=True, num_workers=4)
+    print("data size:", len(loader.dataset))
     print("loader len:", len(loader))
     for i, (labels, images) in enumerate(loader):
         print(labels)

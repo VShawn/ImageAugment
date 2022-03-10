@@ -14,28 +14,33 @@ class DatasetAugmenter(object):
     数据集扩充器
     '''
 
-    def __init__(self, topPath, outDirPath, augment_settings_json_path: str = ""):
+    def __init__(self, org_dataset_dir_path, augmented_dataset_dir_path, augment_settings_json_path: str = ""):
         '''
         构造函数
-        :param topPath: 数据集根目录
+        :param org_dataset_dir_path: 数据集根目录
+        :param augmented_dataset_dir_path: 扩充后的数据集保存路径
         :param augment_setting: 输入的扩充配置文件路径，格式为 {'正则匹配串1' -> SingleImageAugmenter,'正则匹配串2' -> SingleImageAugmenter,}，
         若传入为空则会读取数据集根目录中的配置文件
         '''
-        self.topPath = topPath
-        self.outDirPath = outDirPath
+        self.org_dataset_dir_path = org_dataset_dir_path
+        self.augmented_dataset_dir_path = augmented_dataset_dir_path
         self.augment_settings_json_path = augment_settings_json_path
+        if not os.path.isabs(self.org_dataset_dir_path):
+            self.org_dataset_dir_path = os.path.abspath(self.org_dataset_dir_path)
+        if not os.path.isabs(self.augmented_dataset_dir_path):
+            self.augmented_dataset_dir_path = os.path.abspath(self.augmented_dataset_dir_path)
 
     def __basic_init(self):
         # 创建保存文件夹
-        if not os.path.exists(self.outDirPath):
-            os.makedirs(self.outDirPath)
+        if not os.path.exists(self.augmented_dataset_dir_path):
+            os.makedirs(self.augmented_dataset_dir_path)
 
         # 日志写到当前时间的文件中
         self.logger = logging.getLogger()
         self.logger.setLevel(logging.DEBUG)
         log_format = logging.Formatter('%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s')
         # 使用FileHandler输出到文件
-        fh = logging.FileHandler(os.path.join(self.outDirPath, '{}_{}.log'.format(time.strftime('%Y%m%d_%H%M%S'), os.path.basename(__file__))))
+        fh = logging.FileHandler(os.path.join(self.augmented_dataset_dir_path, '{}_{}.log'.format(time.strftime('%Y%m%d_%H%M%S'), os.path.basename(__file__))))
         fh.setLevel(logging.DEBUG)
         fh.setFormatter(log_format)
         # 使用StreamHandler输出到屏幕
@@ -47,20 +52,18 @@ class DatasetAugmenter(object):
         self.logger.addHandler(ch)
 
         # 分析数据集，得到标签 self.org_dataset_analyzer.labels
+        self.logger.info('Start to augment dataset... {}'.format(self.org_dataset_dir_path))
         self.org_dataset_analyzer = DatasetAnalyser()
-        self.org_dataset_analyzer.SetPath(self.topPath)
-
-        self.logger.info('Start to augment dataset... {}'.format(self.topPath))
+        self.org_dataset_analyzer.SetPath(self.org_dataset_dir_path)
         self.logger.info('we have {} targets to augment'.format(len(self.org_dataset_analyzer.labels)))
 
         json_path: str = ""
-
         # 确定扩充配置文件路径
         if self.augment_settings_json_path != "" and os.path.exists(self.augment_settings_json_path):
             json_path = self.augment_settings_json_path
         # 使用数据集根目录中的配置文件路径
         else:
-            json_path = os.path.join(self.topPath, 'augment_settings.json')
+            json_path = os.path.join(self.org_dataset_dir_path, 'augment_settings.json')
             if not os.path.exists(json_path):
                 # 如果 'augment_setting.json' 不存在，则创建一个默认配置
                 augment_setting = SingleImageAugmenter()
@@ -91,7 +94,12 @@ class DatasetAugmenter(object):
     def Run(self):
         self.__basic_init()
         # 保存分析结果到扩充文件夹
-        self.org_dataset_analyzer.SaveToCsv(os.path.join(self.outDirPath, 'label_info.csv'))
+        # 创建输出信息
+        augmented_dataset_analyzer = DatasetAnalyser()
+        augmented_dataset_analyzer.SetPath(self.org_dataset_dir_path)
+        for i in range(len(augmented_dataset_analyzer.labels)):
+            augmented_dataset_analyzer.labels[i].label_dir_path = os.path.join(self.augmented_dataset_dir_path, os.path.basename(augmented_dataset_analyzer.labels[i].label_dir_path))
+        augmented_dataset_analyzer.SaveToCsv(os.path.join(self.augmented_dataset_dir_path, 'label_info.csv'))
         # 遍历标签 self.org_dataset_analyzer.labels
         for i, label in enumerate(self.org_dataset_analyzer.labels):
             self.logger.info('start to augment label: {}, {}/{}'.format(label.label_dir_name, i + 1, len(self.org_dataset_analyzer.labels)))
@@ -107,7 +115,7 @@ class DatasetAugmenter(object):
             raise Exception('{} is not exist!'.format(label.label_dir_path))
 
         # 计算当前标签扩充后存储路径
-        outDirPath = os.path.join(self.outDirPath, label.label_dir_name)
+        outDirPath = os.path.join(self.augmented_dataset_dir_path, label.label_dir_name)
         if not os.path.exists(outDirPath):
             os.makedirs(outDirPath)
 

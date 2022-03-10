@@ -17,31 +17,30 @@ from abc import ABC, abstractmethod
 
 
 class ITrainer(object):
-    def __init__(self, settings: ClassifyTraning_Settings) -> None:
-        settings.Verdiate()
-        self.Settings: ClassifyTraning_Settings = settings
+    def __init__(self, settings_json_path: str) -> None:
+        self.Settings: ClassifyTraning_Settings = ClassifyTraning_Settings.from_json_file(settings_json_path)
+        self.settings_json_path = settings_json_path
+        assert(self.Settings is not None)
+        self.Settings.verdiate()
         self.Model: nn.Module = None
         self.Optimizer: torch.optim.Optimizer = None
         self.LossFunction: nn.modules.loss._Loss = None
         self.LrUpdater = None
         self.train_loader: DataLoader = None
         self.eval_loader: DataLoader = None
-        self.__basic_init_logger()
-        # 以当前时间作为本次训练Id与文件名
-        self.TrainingId = None
-        self.BestLoss = float.max
+        self.BestLoss = sys.float_info.max
         pass
 
     def __basic_init_logger(self):
         # 创建保存文件夹
-        if not os.path.exists(self.outDirPath):
-            os.makedirs(self.outDirPath)
+        if not os.path.exists(self.Settings.OutputDirPath):
+            os.makedirs(self.Settings.OutputDirPath)
         # 日志写到当前时间的文件中
         self.logger = logging.getLogger()
         self.logger.setLevel(logging.DEBUG)
         log_format = logging.Formatter('%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s')
         # 使用FileHandler输出到文件
-        fh = logging.FileHandler(os.path.join(self.outDirPath, '{}_{}.log'.format(time.strftime('%Y%m%d_%H%M%S'), os.path.basename(__file__))))
+        fh = logging.FileHandler(os.path.join(self.Settings.OutputDirPath, '{}_{}_run_log.log'.format(self.Settings.ProjectName, self.Settings.TrainingId)))
         fh.setLevel(logging.DEBUG)
         fh.setFormatter(log_format)
         # 使用StreamHandler输出到屏幕
@@ -52,11 +51,11 @@ class ITrainer(object):
         self.logger.addHandler(fh)
         self.logger.addHandler(ch)
 
-    def _get_checkpoint_name(self, epoch: int) -> str:
-        dir = os.path.join(self.Settings.OutputDirPath, '{}_checkpoints'.format(self.TrainingId))
-        if not os.path.exists(dir):
-            os.makedirs(dir)
-        return os.path.join(dir, 'epoch_{}.pth'.format(epoch))
+    # def _get_checkpoint_path(self, epoch: int) -> str:
+    #     dir = os.path.join(self.Settings.OutputDirPath, '{}_checkpoints'.format(self.Settings.TrainingId))
+    #     if not os.path.exists(dir):
+    #         os.makedirs(dir)
+    #     return os.path.join(dir, 'epoch_%d.pth' % epoch)
 
     def save_checkpoint(self, is_best: bool, epoch: int) -> None:
         if self.Settings.UseGpuCount > 1:
@@ -69,16 +68,17 @@ class ITrainer(object):
                           'model_state_dict': self.Model.state_dict(),
                           'optimizer_state_dict': self.Optimizer.state_dict(),
                           'epoch': epoch}
-        torch.save(checkpoint, self._get_checkpoint_name(epoch))
+        torch.save(checkpoint, self.Settings.get_checkpoint_path(epoch))
         if is_best:
-            torch.save(checkpoint, os.path.join(self.Settings.OutputDirPath, '{}_best.pth').format(self.TrainingId))
+            # 保存一个单一完整模型
+            torch.save(self.Model, os.path.join(self.Settings.OutputDirPath, '{}_{}_best.pth').format(self.Settings.ProjectName, self.Settings.TrainingId))
 
-    def load_checkpoint(self, epoch: int) -> tuple[nn.Module, optim.Optimizer]:
+    def load_checkpoint(self, epoch: int) -> nn.Module:
         '''
         从 checkpoint 加载模型
         '''
-        path = self._get_checkpoint_name(epoch)
-        checkpoint = torch.load(self._get_checkpoint_name(path))
+        path = self.Settings.get_checkpoint_path(epoch)
+        checkpoint = torch.load(path)
         if checkpoint is None:
             self.logger.error("ResumeFrom {} is not exist".format(epoch))
             exit(1)
@@ -101,9 +101,9 @@ class ITrainer(object):
             nn.Linear(nn0_in, nn0_out),
             nn.Hardswish(),
             nn.Dropout(0.2, inplace=True),
-            nn.Linear(nn0_out, self.Settings.classNum),
+            nn.Linear(nn0_out, self.Settings.LabelCount),
         )
-        self.logger.info("Model Init: {}, class num = {}".format(model, self.Settings.classNum))
+        self.logger.info("Model Init: {}, class num = {}".format(model, self.Settings.LabelCount))
         return model
 
     @abstractmethod
@@ -153,9 +153,9 @@ class ITrainer(object):
         '''
         执行一次 epoch 的训练或测试
         '''
-        loader = self.TrainLoader if is_train else self.EvalLoader
-        train_data_len = len(loader)
-        batch_size = self.Settings.BatchSize
+        write_to_session = 'Train' if is_train else 'Eval'
+        loader = self.train_loader if is_train else self.eval_loader
+        batch_count = len(loader)
         if is_train:
             self.Model.train()
         else:
@@ -166,8 +166,8 @@ class ITrainer(object):
         acc_top5: float = 0.0
         # 读取一遍 loader ，完成一次 epoch 训练
         for i, (labels, images) in enumerate(loader):
-            if i % 1000 == 0:
-                self.logger.debug(' epoch: %d, batch: %d, total %d/%d' % (current_epoch, i, i * batch_size, train_data_len))
+            if i % 32 == 0:
+                self.logger.debug('epoch: {}, {} progress {} / {}'.format(current_epoch, write_to_session, i, batch_count))
             if self.Settings.UseGpuCount > 0:
                 labels = labels.cuda()
                 images = images.cuda()
@@ -175,17 +175,19 @@ class ITrainer(object):
             if is_train:
                 self.Optimizer.zero_grad()
                 outputs = self.Model(images)
-                loss = self.LossFunction(outputs, labels)
+                tensor_loss = self.LossFunction(outputs, labels)
             else:
                 with torch.no_grad():
                     outputs = self.Model(images)
-                    loss = self.LossFunction(outputs, labels)
+                    tensor_loss = self.LossFunction(outputs, labels)
             # backward
             if is_train:
-                loss.backward()
+                tensor_loss.backward()
                 self.Optimizer.step()
+                # 更新 LR
+                self.optimizer_lr_adjust(self.Settings.LR, current_epoch)
             # 统计
-            loss += loss.item()
+            loss += tensor_loss.item()
             for i in range(len(labels)):
                 percentages, indices = torch.sort(outputs[i], descending=True)
                 percentages = percentages.softmax(0)
@@ -199,39 +201,45 @@ class ITrainer(object):
                         acc_top5 += 1
                         break
         # 计算平均值
-        loss = loss / train_data_len
-        acc_top1 = acc_top1 / train_data_len
-        acc_top1_90 = acc_top1_90 / train_data_len
-        acc_top5 = acc_top5 / train_data_len
+        loss = loss / batch_count
+        acc_top1 = acc_top1 / batch_count
+        acc_top1_90 = acc_top1_90 / batch_count
+        acc_top5 = acc_top5 / batch_count
         # 打印
-        write_to_session = 'Train' if is_train else 'Eval'
-        self.logger.info('epoch: %d, {} loss: %.4f, acc_top1: %.4f, acc_top1_90: %.4f, acc_top5: %.4f'.format(current_epoch, write_to_session, acc_top1, acc_top1_90, acc_top5))
-        with SummaryWriter(os.path.join(self.Settings.OutputDirPath, '{}log/loss'.format(self.TrainingId))) as sw_loss, \
-                SummaryWriter(os.path.join(self.Settings.OutputDirPath, '{}log/acc_top1'.format(self.TrainingId))) as sw_acc_top1, \
-                SummaryWriter(os.path.join(self.Settings.OutputDirPath, '{}log/acc_top1_90'.format(self.TrainingId))) as sw_acc_top1_90, \
-                SummaryWriter(os.path.join(self.Settings.OutputDirPath, '{}log/acc_top5'.format(self.TrainingId))) as sw_acc_top5, \
-                SummaryWriter(os.path.join(self.Settings.OutputDirPath, '{}log/LR'.format(self.TrainingId))) as sw_lr:
+        self.logger.info('epoch: %d, loss: %.4f, acc_top1: %.4f, acc_top1_90: %.4f, acc_top5: %.4f' % (current_epoch, loss, acc_top1, acc_top1_90, acc_top5))
+        with SummaryWriter(os.path.join(self.Settings.OutputDirPath, '{}_{}_train_log/loss'.format(self.Settings.ProjectName, self.Settings.TrainingId))) as sw_loss, \
+                SummaryWriter(os.path.join(self.Settings.OutputDirPath, '{}_{}_train_log/acc_top1'.format(self.Settings.ProjectName, self.Settings.TrainingId))) as sw_acc_top1, \
+                SummaryWriter(os.path.join(self.Settings.OutputDirPath, '{}_{}_train_log/acc_top1_90'.format(self.Settings.ProjectName, self.Settings.TrainingId))) as sw_acc_top1_90, \
+                SummaryWriter(os.path.join(self.Settings.OutputDirPath, '{}_{}_train_log/acc_top5'.format(self.Settings.ProjectName, self.Settings.TrainingId))) as sw_acc_top5, \
+                SummaryWriter(os.path.join(self.Settings.OutputDirPath, '{}_{}_train_log/LR'.format(self.Settings.ProjectName, self.Settings.TrainingId))) as sw_lr:
             sw_loss.add_scalar(write_to_session, loss, global_step=current_epoch)
             sw_acc_top1.add_scalar(write_to_session, acc_top1, global_step=current_epoch)
             sw_acc_top1_90.add_scalar(write_to_session, acc_top1_90, global_step=current_epoch)
             sw_acc_top5.add_scalar(write_to_session, acc_top5, global_step=current_epoch)
-            sw_lr.add_scalar(write_to_session, self.Optimizer.param_groups[0].lr, global_step=current_epoch)
+            sw_lr.add_scalar(write_to_session, self.Optimizer.param_groups[0]['lr'], global_step=current_epoch)
 
         # 保存模型
         if is_train == False:
             is_best = False
-            if loss > self.BestLoss:
+            # 保存训练进度
+            self.Settings.ResumeEpoch = current_epoch
+            self.Settings.ResumeLR = self.Optimizer.param_groups[0]['lr']
+            self.Settings.to_json_file(self.settings_json_path)
+            if loss < self.BestLoss:
                 is_best = True
                 self.BestLoss = loss
-            self.save_checkpoint(current_epoch, is_best)
+            self.save_checkpoint(is_best, current_epoch)
 
     def train(self) -> None:
         '''
         开始训练
         从几个虚函数中读取网络参数，然后根据配置开始训练
         '''
-        if self.TrainingId is None:
-            self.TrainingId = time.strftime('%Y%m%d_%H%M%S')
+        self.Settings.verdiate()
+        self.Settings.start_new_train_if_not_resume()
+        self.settings_json_path = '{}_{}.json'.format(self.settings_json_path, self.Settings.TrainingId)
+        self.__basic_init_logger()
+
         # 创建训练模型参数保存的文件夹
         if not os.path.exists(self.Settings.OutputDirPath):
             os.makedirs(self.Settings.OutputDirPath)
@@ -257,25 +265,28 @@ class ITrainer(object):
             self.Model.cuda()
 
         # 创建 loader
-        train_loader, eval_loader = ClassifyTraning_Dataset.get_train_validate_data_loader(label_info_csv_path=self.Settings.DatasetLabelInfoCsvPath,
-                                                                                           input_image_size=self.Settings.InputSize,
-                                                                                           batch_size=self.Settings.BatchSize,
-                                                                                           num_workers=4,
-                                                                                           validate_ratio=0.2)
-        self.logger.info("train_loader items count = {}".format(len(train_loader)))
-        self.logger.info("eval_loader items count = {}".format(len(eval_loader)))
+        self.train_loader, self.eval_loader = ClassifyTraning_Dataset.get_train_validate_data_loader(label_info_csv_path=self.Settings.DatasetLabelInfoCsvPath,
+                                                                                                     input_image_size=self.Settings.InputSize,
+                                                                                                     batch_size=self.Settings.BatchSize,
+                                                                                                     num_workers=4,
+                                                                                                     validate_ratio=0.2)
+        self.logger.info("train_loader items count = {}".format(len(self.train_loader)))
+        self.logger.info("eval_loader items count = {}".format(len(self.eval_loader)))
 
         # 开始训练
         for current_epoch in range(self.Settings.ResumeEpoch, self.Settings.Epochs):
             self.logger.info('epoch {} start'.format(current_epoch))
             self._train_or_eval_one_epoch(current_epoch, True)
             self._train_or_eval_one_epoch(current_epoch, False)
-            # 更新 LR
-            self.optimizer_lr_adjust(self.Settings.LR, current_epoch)
             pass
 
 
 if __name__ == '__main__':
     s = ClassifyTraning_Settings()
-    t = ITrainer(s)
+    s.set_dataset_path(r'D:\UritWorks\AI\image_preprocess\Augmented')
+    if os.path.exists(s.OutputDirPath) == False:
+        os.makedirs(s.OutputDirPath)
+    setting_path = os.path.join(s.OutputDirPath, 'demo_train_setting.json')
+    s.to_json_file(setting_path)
+    t = ITrainer(setting_path)
     t.train()

@@ -23,10 +23,15 @@ class LabelInfo(object):
         self.label_value = label_value
         self.label_dir_path = label_dir_path
         self.label_dir_name = os.path.basename(label_dir_path)
-        self.image_paths = [os.path.join(label_dir_path, file) for file in os.listdir(label_dir_path) if (
-            file.lower().endswith('.bmp') or file.lower().endswith('.jpg') or file.lower().endswith('.png'))]
+        self.image_paths = self.get_image_paths(label_dir_path)
         # 文件夹内的 bmp jpg 图片数量
         self.image_count = len(self.image_paths)
+
+    @staticmethod
+    def get_image_paths(dir_path: str) -> list[str]:
+        if os.path.exists(dir_path) and os.path.isdir(dir_path):
+            return [os.path.join(dir_path, file) for file in os.listdir(dir_path) if (file.lower().endswith('.bmp') or file.lower().endswith('.jpg') or file.lower().endswith('.png'))]
+        return []
 
 
 class DatasetAnalyser(object):
