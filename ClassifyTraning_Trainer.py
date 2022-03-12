@@ -24,8 +24,8 @@ class ITrainer(object):
         self.Settings.verdiate()
         self.Model: nn.Module = None
         self.Optimizer: torch.optim.Optimizer = None
-        self.LossFunction: nn.modules.loss._Loss = None
-        self.LrUpdater = None
+        self.loss_func: nn.modules.loss._Loss = None
+        self.LrUpdater: torch.optim.lr_scheduler._LRScheduler = None
         self.train_loader: DataLoader = None
         self.eval_loader: DataLoader = None
         self.BestLoss = sys.float_info.max
@@ -61,12 +61,12 @@ class ITrainer(object):
         if self.Settings.UseGpuCount > 1:
             checkpoint = {'model': self.Model.module,
                           'model_state_dict': self.Model.module.state_dict(),
-                          'optimizer_state_dict': self.Optimizer.state_dict(),
+                          #   'optimizer_state_dict': self.Optimizer.state_dict(),
                           'epoch': epoch}
         else:
             checkpoint = {'model': self.Model,
                           'model_state_dict': self.Model.state_dict(),
-                          'optimizer_state_dict': self.Optimizer.state_dict(),
+                          #   'optimizer_state_dict': self.Optimizer.state_dict(),
                           'epoch': epoch}
         torch.save(checkpoint, self.Settings.get_checkpoint_path(epoch))
         if is_best:
@@ -155,11 +155,8 @@ class ITrainer(object):
         '''
         write_to_session = 'Train' if is_train else 'Eval'
         loader = self.train_loader if is_train else self.eval_loader
+        item_count = len(loader.dataset)
         batch_count = len(loader)
-        if is_train:
-            self.Model.train()
-        else:
-            self.Model.eval()
         loss: float = 0.0
         acc_top1: float = 0.0
         acc_top1_90: float = 0.0
@@ -171,21 +168,20 @@ class ITrainer(object):
             if self.Settings.UseGpuCount > 0:
                 labels = labels.cuda()
                 images = images.cuda()
-            # forward
             if is_train:
-                self.Optimizer.zero_grad()
+                self.Model.train()
+                # forward
                 outputs = self.Model(images)
-                tensor_loss = self.LossFunction(outputs, labels)
-            else:
-                with torch.no_grad():
-                    outputs = self.Model(images)
-                    tensor_loss = self.LossFunction(outputs, labels)
-            # backward
-            if is_train:
+                tensor_loss = self.loss_func(outputs, labels)
+                # backward
+                self.Optimizer.zero_grad()
                 tensor_loss.backward()
                 self.Optimizer.step()
-                # 更新 LR
-                self.optimizer_lr_adjust(self.Settings.LR, current_epoch)
+            else:
+                self.Model.eval()
+                with torch.no_grad():
+                    outputs = self.Model(images)
+                    tensor_loss = self.loss_func(outputs, labels)
             # 统计
             loss += tensor_loss.item()
             for i in range(len(labels)):
@@ -200,13 +196,18 @@ class ITrainer(object):
                                 acc_top1_90 += 1
                         acc_top5 += 1
                         break
+        if is_train:
+            # 更新 LR
+            self.optimizer_lr_adjust(self.Settings.LR, current_epoch)
+
         # 计算平均值
-        loss = loss / batch_count
-        acc_top1 = acc_top1 / batch_count
-        acc_top1_90 = acc_top1_90 / batch_count
-        acc_top5 = acc_top5 / batch_count
+        loss = loss / item_count
+        acc_top1 = acc_top1 / item_count
+        acc_top1_90 = acc_top1_90 / item_count
+        acc_top5 = acc_top5 / item_count
         # 打印
         self.logger.info('epoch: %d, loss: %.4f, acc_top1: %.4f, acc_top1_90: %.4f, acc_top5: %.4f' % (current_epoch, loss, acc_top1, acc_top1_90, acc_top5))
+        print('LR = ', self.Optimizer.param_groups[0]['lr'])
         with SummaryWriter(os.path.join(self.Settings.OutputDirPath, '{}_{}_train_log/loss'.format(self.Settings.ProjectName, self.Settings.TrainingId))) as sw_loss, \
                 SummaryWriter(os.path.join(self.Settings.OutputDirPath, '{}_{}_train_log/acc_top1'.format(self.Settings.ProjectName, self.Settings.TrainingId))) as sw_acc_top1, \
                 SummaryWriter(os.path.join(self.Settings.OutputDirPath, '{}_{}_train_log/acc_top1_90'.format(self.Settings.ProjectName, self.Settings.TrainingId))) as sw_acc_top1_90, \
@@ -228,7 +229,8 @@ class ITrainer(object):
             if loss < self.BestLoss:
                 is_best = True
                 self.BestLoss = loss
-            self.save_checkpoint(is_best, current_epoch)
+            if is_best or current_epoch % self.Settings.SaveModelEpoch == 0:
+                self.save_checkpoint(is_best, current_epoch)
 
     def train(self) -> None:
         '''
@@ -247,7 +249,11 @@ class ITrainer(object):
         # 初始化模型
         self.Model = self.load_checkpoint(self.Settings.ResumeEpoch) if self.Settings.ResumeEpoch > 0 else self.init_model()
         self.Optimizer = self.init_optimizer()
-        self.LossFunction = self.init_loss_function()
+        self.loss_func = self.init_loss_function()
+        if self.Settings.UseGpuCount > 0:
+            for group in self.Optimizer.param_groups:
+                group.setdefault('initial_lr', self.Settings.LR)
+                group.setdefault('initial_lr', self.Settings.ResumeLR)
 
         # 配置 pytorch 环境
         if self.Settings.UseGpuCount == 0:
@@ -282,11 +288,14 @@ class ITrainer(object):
 
 
 if __name__ == '__main__':
-    s = ClassifyTraning_Settings()
-    s.set_dataset_path(r'D:\UritWorks\AI\image_preprocess\Augmented')
-    if os.path.exists(s.OutputDirPath) == False:
-        os.makedirs(s.OutputDirPath)
-    setting_path = os.path.join(s.OutputDirPath, 'demo_train_setting.json')
-    s.to_json_file(setting_path)
-    t = ITrainer(setting_path)
+    # s = ClassifyTraning_Settings()
+    # s.set_dataset_path(r'D:\UritWorks\AI\image_preprocess\Augmented')
+    # if os.path.exists(s.OutputDirPath) == False:
+    #     os.makedirs(s.OutputDirPath)
+    # setting_path = os.path.join(s.OutputDirPath, 'demo_train_setting.json')
+    # s.to_json_file(setting_path)
+    # t = ITrainer(setting_path)
+    # t.train()
+
+    t = ITrainer(r'D:\UritWorks\AI\image_preprocess\DemoTrained\demo_train_setting.json_20220311113655.json')
     t.train()

@@ -18,11 +18,11 @@ class ClassifyTraning_Settings:
         self.TrainingId: str = None  # 以当前时间作为本次训练Id与文件名，每次运行训练时，都会生成一个新的Id
         self.DatasetPath: str = ""
         self.DatasetLabelInfoCsvPath: str = ""
-        self.LabelCount: int = 0  # 类别数量
         self.InputSize: int = 224  # 输入图像大小
         self.BatchSize: int = 32  # 批次大小，每次喂给模型的样本数量。
         self.Epochs: int = 1000  # 迭代轮数
-        self.LR: float = 0.1  # 初始学习率
+        self.SaveModelEpoch = 1  # 模型保存间隔
+        self.LR: float = 0.01  # 初始学习率
         self.UseGpuCount: int = 1  # 用几个GPU训练，0 则用 CPU 训练
         self.OutputDirPath: str = "DemoTrained"  # 输出模型路径
         self.ResumeEpoch: int = 0  # 恢复从哪个 Epoch 恢复训练

@@ -105,6 +105,14 @@ class SingleImageAugmenter(object):
         :augmentCount: 扩充出的图片数量，输出数量必然大于或等于这个值
         '''
         self.AugmentCount = floor(augmentCount)
+        if self.AugmentCount < 1:
+            self.Step0_FlipCount = 0
+            self.Step1_RotateCount = 0
+            self.Step2_ScaleCount = 0
+            self.Step3_ContrastAdjustCount = 0
+            self.Step4_GaussianNoiseCount = 0
+            return  # 如果扩充数量小于 1，则不进行任何扩充
+
         self.Step1_RotateCount = int(augmentCount / (1 + self.Step0_FlipCount) / (1 + self.Step2_ScaleCount) / (1 + self.Step3_ContrastAdjustCount) / (1 + self.Step4_GaussianNoiseCount))
         # 旋转次数超过 360 次，则增加 Step2_ScaleCount
         while self.Step1_RotateCount > 350:
@@ -129,7 +137,7 @@ class SingleImageAugmenter(object):
         :return: 扩充后的图像列表
         '''
         # image = imageio.imread(image_path)  # 读取格式为 RGB # 若用 opencv 读取，则格式为 BGR，因此需要转换
-        image:np.ndarray = self.open_image(image_path)
+        image: np.ndarray = self.open_image(image_path)
         return self.run_by_image_data(image)
 
     def run_by_image_data(self, image: np.ndarray) -> list:
@@ -302,4 +310,3 @@ if __name__ == '__main__':
     os.makedirs('out_gray', exist_ok=True)
     for i in range(len(results)):
         imageio.imwrite('out_gray/test_gray_#' + str(i) + '.jpg', results[i])
-

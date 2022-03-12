@@ -5,6 +5,7 @@ import json
 import re
 import time
 import logging
+from math import floor
 from ClassifyPreprocess_DatasetAnalyser import DatasetAnalyser, LabelInfo
 from ClassifyPreprocess_SingleImageAugmenter import SingleImageAugmenter
 
@@ -128,7 +129,7 @@ class DatasetAugmenter(object):
             label_augmenter = self.global_augment_setting
 
         # 计算单个图片需扩充数量
-        augment_one_image_count = label_augmenter.AugmentCount / label.image_count
+        augment_one_image_count: int = floor(label_augmenter.AugmentCount / label.image_count)
         # 创建单个图片扩充器
         img_augmenter = SingleImageAugmenter.from_json(label_augmenter.to_json())  # 拷贝一份
         img_augmenter.set_augment_count(augment_one_image_count)  # 设置单个图片扩充数量
