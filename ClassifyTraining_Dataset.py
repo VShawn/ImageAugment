@@ -18,7 +18,7 @@ from torch.utils.data import Dataset as TorchDataset, DataLoader
 mean, std = [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
 
 
-class ClassifyTraning_Dataset(TorchDataset):
+class ClassifyTraining_Dataset(TorchDataset):
     def __init__(self, image_paths: list[str], label_values: list[int], resize_to: int = None, random_crop_rate: tuple[float, float] = (0, 0.05)):
         self._image_paths = image_paths
         self._label_values = label_values
@@ -73,19 +73,19 @@ class ClassifyTraning_Dataset(TorchDataset):
         assert(os.path.exists(train_image_paths[0]))
         assert(os.path.exists(eval_image_paths[0]))
 
-        train_dataset = ClassifyTraning_Dataset(train_image_paths, train_image_labels, input_image_size)
-        validate_dataset = ClassifyTraning_Dataset(eval_image_paths, validate_image_labels, input_image_size)
+        train_dataset = ClassifyTraining_Dataset(train_image_paths, train_image_labels, input_image_size)
+        validate_dataset = ClassifyTraining_Dataset(eval_image_paths, validate_image_labels, input_image_size)
         return train_dataset, validate_dataset
 
     @staticmethod
     def get_train_validate_data_loader(label_info_csv_path: str, input_image_size: int, batch_size: int, num_workers=4, validate_ratio=0.2, shuffle: bool = True) -> tuple[DataLoader, DataLoader]:
-        td, vd = ClassifyTraning_Dataset.get_train_validate_dataset(label_info_csv_path, input_image_size, validate_ratio)
+        td, vd = ClassifyTraining_Dataset.get_train_validate_dataset(label_info_csv_path, input_image_size, validate_ratio)
         return DataLoader(td, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers), DataLoader(vd, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
 
 
 if __name__ == '__main__':
     # 测试生成训练集和测试集
-    td, vd = ClassifyTraning_Dataset.get_train_validate_dataset('D:\\UritWorks\\AI\\image_preprocess\\Augmented\\label_info.csv', 257, 0.2)
+    td, vd = ClassifyTraining_Dataset.get_train_validate_dataset('D:\\UritWorks\\AI\\image_preprocess\\Augmented\\label_info.csv', 257, 0.2)
     loader = DataLoader(td, batch_size=32, shuffle=True, num_workers=4)
     print("data size:", len(loader.dataset))
     print("loader len:", len(loader))

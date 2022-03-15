@@ -11,10 +11,10 @@ from torch import nn, Tensor, optim
 from torchvision import models
 from torch.utils.data import Dataset as TorchDataset, DataLoader
 from ClassifyPreprocess_DatasetAnalyser import DatasetAnalyser, LabelInfo
-from ClassifyTraning_Settings import ClassifyTraning_Settings
-from ClassifyTraning_Dataset import ClassifyTraning_Dataset
+from ClassifyTraining_Settings import ClassifyTraining_Settings
+from ClassifyTraining_Dataset import ClassifyTraining_Dataset
 from tensorboardX import SummaryWriter
-from ClassifyTraning_Trainer import ITrainer
+from ClassifyTraining_Trainer import ITrainer
 
 
 class MobileNetV3Trainer(ITrainer):
@@ -70,7 +70,7 @@ class MobileNetV3Trainer(ITrainer):
 
 
 if __name__ == '__main__':
-    # s = ClassifyTraning_Settings()
+    # s = ClassifyTraining_Settings()
     # s.set_dataset_path(r'D:\UritWorks\AI\image_preprocess\Augmented')
     # if os.path.exists(s.OutputDirPath) == False:
     #     os.makedirs(s.OutputDirPath)

@@ -11,7 +11,7 @@ from httpx import patch
 from ClassifyPreprocess_DatasetAnalyser import DatasetAnalyser, LabelInfo
 
 
-class ClassifyTraning_Settings:
+class ClassifyTraining_Settings:
     '''
     单次训练参数配置类，将被保存到 checkpoint 文件同目录
     '''
@@ -82,8 +82,8 @@ class ClassifyTraning_Settings:
         return self.__dict__
 
     @staticmethod
-    def from_dict(settings: dict) -> 'ClassifyTraning_Settings':
-        ret = ClassifyTraning_Settings()
+    def from_dict(settings: dict) -> 'ClassifyTraining_Settings':
+        ret = ClassifyTraining_Settings()
         for key in ret.__dict__:
             if key in settings:
                 ret.__dict__[key] = settings[key]
@@ -99,23 +99,23 @@ class ClassifyTraning_Settings:
         pass
 
     @staticmethod
-    def from_json(strJson: str) -> 'ClassifyTraning_Settings':
+    def from_json(strJson: str) -> 'ClassifyTraining_Settings':
         jobj = json.loads(strJson)
-        return ClassifyTraning_Settings.from_dict(jobj)
+        return ClassifyTraining_Settings.from_dict(jobj)
 
     @staticmethod
-    def from_json_file(strJson: str) -> 'ClassifyTraning_Settings':
+    def from_json_file(strJson: str) -> 'ClassifyTraining_Settings':
         with open(strJson, 'r') as f:
-            return ClassifyTraning_Settings.from_json(f.read())
+            return ClassifyTraining_Settings.from_json(f.read())
 
 
 if __name__ == '__main__':
     # # test code
-    # settings = ClassifyTraning_Settings()
+    # settings = ClassifyTraining_Settings()
     # settings.set_dataset_path('Augmented')
     # print(settings.to_dict())
     # print(settings.to_json())
-    # print(ClassifyTraning_Settings.from_json(settings.to_json()).to_json())
+    # print(ClassifyTraining_Settings.from_json(settings.to_json()).to_json())
     # 读取输入参数
     argv = sys.argv[1:]
     try:
@@ -144,7 +144,7 @@ if __name__ == '__main__':
     dir_path = os.path.dirname(outputJsonFile)
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
-    settings = ClassifyTraning_Settings()
+    settings = ClassifyTraining_Settings()
     settings.OutputDirPath = dir_path
     settings.set_dataset_path(inputDir)
     settings.to_json_file(outputJsonFile)

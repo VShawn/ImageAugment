@@ -10,14 +10,14 @@ from torch import nn, Tensor, optim
 from torchvision import models
 from torch.utils.data import Dataset as TorchDataset, DataLoader
 from ClassifyPreprocess_DatasetAnalyser import DatasetAnalyser, LabelInfo
-from ClassifyTraning_Settings import ClassifyTraning_Settings
-from ClassifyTraning_Dataset import ClassifyTraning_Dataset
+from ClassifyTraining_Settings import ClassifyTraining_Settings
+from ClassifyTraining_Dataset import ClassifyTraining_Dataset
 from tensorboardX import SummaryWriter
 
 
 class ITrainer(object):
     def __init__(self, settings_json_path: str) -> None:
-        self.Settings: ClassifyTraning_Settings = ClassifyTraning_Settings.from_json_file(settings_json_path)
+        self.Settings: ClassifyTraining_Settings = ClassifyTraining_Settings.from_json_file(settings_json_path)
         self.settings_json_path = settings_json_path
         assert(self.Settings is not None)
         self.Settings.verdiate()
@@ -277,11 +277,11 @@ class ITrainer(object):
             self.Model.cuda()
 
         # 创建 loader
-        self.train_loader, self.eval_loader = ClassifyTraning_Dataset.get_train_validate_data_loader(label_info_csv_path=self.Settings.DatasetLabelInfoCsvPath,
-                                                                                                     input_image_size=self.Settings.InputSize,
-                                                                                                     batch_size=self.Settings.BatchSize,
-                                                                                                     num_workers=4,
-                                                                                                     validate_ratio=0.2)
+        self.train_loader, self.eval_loader = ClassifyTraining_Dataset.get_train_validate_data_loader(label_info_csv_path=self.Settings.DatasetLabelInfoCsvPath,
+                                                                                                      input_image_size=self.Settings.InputSize,
+                                                                                                      batch_size=self.Settings.BatchSize,
+                                                                                                      num_workers=4,
+                                                                                                      validate_ratio=0.2)
         self.logger.info("train_loader items count = {}".format(len(self.train_loader)))
         self.logger.info("eval_loader items count = {}".format(len(self.eval_loader)))
 
@@ -294,7 +294,7 @@ class ITrainer(object):
 
 
 # if __name__ == '__main__':
-#     # s = ClassifyTraning_Settings()
+#     # s = ClassifyTraining_Settings()
 #     # s.set_dataset_path(r'D:\UritWorks\AI\image_preprocess\Augmented')
 #     # if os.path.exists(s.OutputDirPath) == False:
 #     #     os.makedirs(s.OutputDirPath)
