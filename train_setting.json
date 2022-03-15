@@ -1,0 +1,16 @@
+{
+    "ProjectName": "ModelForDemo",
+    "TrainingId": null,
+    "DatasetPath": "D:\\UritWorks\\AI\\image_preprocess\\MyAugmented",
+    "DatasetLabelInfoCsvPath": "D:\\UritWorks\\AI\\image_preprocess\\MyAugmented\\label_info.csv",
+    "InputSize": 224,
+    "BatchSize": 32,
+    "Epochs": 1000,
+    "SaveModelEpoch": 1,
+    "LR": 0.01,
+    "UseGpuCount": 1,
+    "OutputDirPath": "DemoTrained",
+    "ResumeEpoch": 0,
+    "ResumeLR": 0.01,
+    "LabelCount": 16
+}

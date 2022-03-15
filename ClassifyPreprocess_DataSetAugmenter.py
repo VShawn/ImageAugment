@@ -60,23 +60,26 @@ class DatasetAugmenter(object):
 
         json_path: str = ""
         # 确定扩充配置文件路径
-        if self.augment_settings_json_path != "" and os.path.exists(self.augment_settings_json_path):
+        if self.augment_settings_json_path != "":
             json_path = self.augment_settings_json_path
         # 使用数据集根目录中的配置文件路径
         else:
             json_path = os.path.join(self.org_dataset_dir_path, 'augment_settings.json')
-            if not os.path.exists(json_path):
-                # 如果 'augment_setting.json' 不存在，则创建一个默认配置
-                augment_setting = SingleImageAugmenter()
-                settings = dict()
-                settings['global'] = augment_setting
-                for label in self.org_dataset_analyzer.labels:
-                    settings[label.label_dir_name] = augment_setting
-                    pass
-                # 保存 dict 到 json
-                with open(json_path, 'w') as f:
-                    f.write(json.dumps({k: v.to_dict() for k, v in settings.items()}, indent=4, separators=(',', ': ')))
-                print("we generated a default augment_settings.json in '{}'".format(json_path))
+        # 生成配置文件并退出
+        if not os.path.exists(json_path):
+            # 如果 'augment_setting.json' 不存在，则创建一个默认配置
+            augment_setting = SingleImageAugmenter()
+            settings = dict()
+            settings['global'] = augment_setting
+            for label in self.org_dataset_analyzer.labels:
+                settings[label.label_dir_name] = augment_setting
+                pass
+            # 保存 dict 到 json
+            with open(json_path, 'w') as f:
+                f.write(json.dumps({k: v.to_dict() for k, v in settings.items()}, indent=4, separators=(',', ': ')))
+            print("we generated a default augment_settings.json in '{}'".format(json_path))
+            print("please modify it then rerun the script.'{}'".format(json_path))
+            return
 
         logging.info('reading setting from: {}'.format(json_path))
         # 读取 json 配置文件
@@ -145,23 +148,22 @@ if __name__ == '__main__':
     inputDir = ''
     outputDir = ''
     settingsPath = ''
+    generate_default_setting_path = ''
     # 读取输入参数
     try:
-        opts, args = getopt.getopt(argv, "hi:o:", ["i=", "o=", "c="])
+        opts, args = getopt.getopt(argv, "-h-i:-o:-c:", ["i=", "o=", "c="])
         if len(opts) == 0:
-            # print('please set args: -i <input dir path> -o <output dir path>')
-            # sys.exit()
-            inputDir = 'E:\BM3000-TEST\B\FiveCells'
-            outputDir = 'Augmented'
+            print('please set args: -i <input dir path> -o <output dir path>')
+            sys.exit()
+            # inputDir = 'E:\BM3000-TEST\B\FiveCells'
+            # outputDir = 'Augmented'
         else:
             for opt, arg in opts:
                 if opt == '-h':
                     print('please set args: -i <input dir path> -o <output dir path> -c <json augment_settings file path>')
                     sys.exit()
                 else:
-                    if not os.path.exists(arg):
-                        raise '{} {} not existed'.format(opt, arg)
-                    elif opt in ("-i"):
+                    if opt in ("-i"):
                         inputDir = arg
                     elif opt in ("-o"):
                         outputDir = arg
@@ -174,5 +176,5 @@ if __name__ == '__main__':
     print('输入为：', inputDir)
     print('输出为：', outputDir)
     print('配置文件', settingsPath)
-    aug = DatasetAugmenter(inputDir, outputDir)
+    aug = DatasetAugmenter(inputDir, outputDir, settingsPath)
     aug.Run()

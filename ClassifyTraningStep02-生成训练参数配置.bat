@@ -1,0 +1,1 @@
+python ClassifyTraning_Settings.py -i MyAugmented -o Trained\train_setting.json

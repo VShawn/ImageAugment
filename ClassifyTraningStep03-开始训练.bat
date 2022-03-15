@@ -1,0 +1,1 @@
+python ClassifyTraning_Trainer_MobileNetV3_Demo.py -i Trained\train_setting.json

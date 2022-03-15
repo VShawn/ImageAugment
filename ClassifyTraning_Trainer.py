@@ -13,7 +13,6 @@ from ClassifyPreprocess_DatasetAnalyser import DatasetAnalyser, LabelInfo
 from ClassifyTraning_Settings import ClassifyTraning_Settings
 from ClassifyTraning_Dataset import ClassifyTraning_Dataset
 from tensorboardX import SummaryWriter
-from abc import ABC, abstractmethod
 
 
 class ITrainer(object):
@@ -90,53 +89,59 @@ class ITrainer(object):
     @abstractmethod
     def init_model(self) -> nn.Module:
         '''
-        初始化一个新的模型
+        初始化一个新的模型，并返回
         '''
-        # 建立模型
-        model = models.mobilenet_v3_large(pretrained=True)
-        # 修改输出层
-        nn0_in = model.classifier[0].in_features
-        nn0_out = model.classifier[0].out_features
-        model.classifier = nn.Sequential(
-            nn.Linear(nn0_in, nn0_out),
-            nn.Hardswish(),
-            nn.Dropout(0.2, inplace=True),
-            nn.Linear(nn0_out, self.Settings.LabelCount),
-        )
-        self.logger.info("Model Init: {}, class num = {}".format(model, self.Settings.LabelCount))
-        return model
+        # # 建立模型
+        # model = models.mobilenet_v3_large(pretrained=True)
+        # # 修改输出层
+        # nn0_in = model.classifier[0].in_features
+        # nn0_out = model.classifier[0].out_features
+        # model.classifier = nn.Sequential(
+        #     nn.Linear(nn0_in, nn0_out),
+        #     nn.Hardswish(),
+        #     nn.Dropout(0.2, inplace=True),
+        #     nn.Linear(nn0_out, self.Settings.LabelCount),
+        # )
+        # self.logger.info("Model Init: {}, class num = {}".format(model, self.Settings.LabelCount))
+        # return model
+        raise NotImplemented
 
     @abstractmethod
     def init_optimizer(self) -> optim.Optimizer:
         '''
-        初始化优化器
+        初始化一个优化器，并返回
         '''
-        # 优化器
-        optimizer = optim.Adam(self.Model.parameters(), lr=self.Settings.LR)
-        # optimizer = optim.SGD(self.Model.parameters(), lr=self.Settings.LR, momentum=self.Settings.MOMENTUM, weight_decay=self.Settings.WEIGHT_DECAY)
-        return optimizer
+        # # 优化器
+        # optimizer = optim.Adam(self.Model.parameters(), lr=self.Settings.LR)
+        # # optimizer = optim.SGD(self.Model.parameters(), lr=self.Settings.LR, momentum=self.Settings.MOMENTUM, weight_decay=self.Settings.WEIGHT_DECAY)
+        # return optimizer
+        raise NotImplemented
 
     @abstractmethod
     def init_loss_function(self) -> nn.modules.loss._Loss:
         '''
-        初始化损失函数
+        初始化一个损失函数，并返回
         '''
-        loss_function = nn.CrossEntropyLoss()
-        # loss_function = nn.BCEWithLogitsLoss()
-        # loss_function = LabelSmoothSoftmaxCE()
-        # loss_function = LabelSmoothingCrossEntropy()
-        return loss_function
+        # loss_function = nn.CrossEntropyLoss()
+        # # loss_function = nn.BCEWithLogitsLoss()
+        # # loss_function = LabelSmoothSoftmaxCE()
+        # # loss_function = LabelSmoothingCrossEntropy()
+        # return loss_function
+        raise NotImplemented
 
     @abstractmethod
     def optimizer_lr_adjust(self, learning_rate_base: float, current_epoch: int) -> None:
-        if self.LrUpdater is None:
-            # self.LrUpdater = torch.optim.lr_scheduler.StepLR(self.Optimizer, step_size=5, gamma=0.1, last_epoch=current_epoch - 1)
-            # self.LrUpdater = torch.optim.lr_scheduler.ExponentialLR(self.Optimizer, gamma=0.1, last_epoch=current_epoch - 1)
-            self.LrUpdater = torch.optim.lr_scheduler.CosineAnnealingLR(self.Optimizer, T_max=10, last_epoch=current_epoch - 1)
-            # self.LrUpdater = torch.optim.lr_scheduler.ReduceLROnPlateau(self.Optimizer)
-
-        self.LrUpdater.step()
-        # """Sets the learning rate
+        '''
+        每次调用都调节一次 LR
+        '''
+        # # 使用 lr_scheduler，第一次调用时初始化一个 LR 调节器，后续调用时，根据 current_epoch 调整 self.Optimizer 的 LR
+        # if self.LrUpdater is None:
+        #     # self.LrUpdater = torch.optim.lr_scheduler.StepLR(self.Optimizer, step_size=5, gamma=0.1, last_epoch=current_epoch - 1)
+        #     # self.LrUpdater = torch.optim.lr_scheduler.ExponentialLR(self.Optimizer, gamma=0.1, last_epoch=current_epoch - 1)
+        #     self.LrUpdater = torch.optim.lr_scheduler.CosineAnnealingLR(self.Optimizer, T_max=10, last_epoch=current_epoch - 1)
+        #     # self.LrUpdater = torch.optim.lr_scheduler.ReduceLROnPlateau(self.Optimizer)
+        # self.LrUpdater.step()
+        # """Sets the learning rate 手动调节
         # # Adapted from PyTorch Imagenet example:
         # # https://github.com/pytorch/examples/blob/master/imagenet/main.py
         # """
@@ -148,6 +153,7 @@ class ITrainer(object):
         # for param_group in self.Optimizer.param_groups:
         #     param_group['lr'] = lr
         # return lr
+        raise NotImplemented
 
     def _train_or_eval_one_epoch(self, current_epoch: int, is_train: bool) -> None:
         '''
@@ -287,15 +293,14 @@ class ITrainer(object):
             pass
 
 
-if __name__ == '__main__':
-    # s = ClassifyTraning_Settings()
-    # s.set_dataset_path(r'D:\UritWorks\AI\image_preprocess\Augmented')
-    # if os.path.exists(s.OutputDirPath) == False:
-    #     os.makedirs(s.OutputDirPath)
-    # setting_path = os.path.join(s.OutputDirPath, 'demo_train_setting.json')
-    # s.to_json_file(setting_path)
-    # t = ITrainer(setting_path)
-    # t.train()
-
-    t = ITrainer(r'D:\UritWorks\AI\image_preprocess\DemoTrained\demo_train_setting.json_20220311113655.json')
-    t.train()
+# if __name__ == '__main__':
+#     # s = ClassifyTraning_Settings()
+#     # s.set_dataset_path(r'D:\UritWorks\AI\image_preprocess\Augmented')
+#     # if os.path.exists(s.OutputDirPath) == False:
+#     #     os.makedirs(s.OutputDirPath)
+#     # setting_path = os.path.join(s.OutputDirPath, 'demo_train_setting.json')
+#     # s.to_json_file(setting_path)
+#     # t = ITrainer(setting_path)
+#     # t.train()
+#     t = ITrainer(r'D:\UritWorks\AI\image_preprocess\DemoTrained\demo_train_setting.json_20220311113655.json')
+#     t.train()

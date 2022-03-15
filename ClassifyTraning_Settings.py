@@ -1,3 +1,4 @@
+from posixpath import isabs
 import sys
 import getopt
 import os
@@ -5,6 +6,8 @@ import json
 import re
 import time
 import logging
+
+from httpx import patch
 from ClassifyPreprocess_DatasetAnalyser import DatasetAnalyser, LabelInfo
 
 
@@ -39,6 +42,8 @@ class ClassifyTraning_Settings:
         设置数据集位置
         '''
         self.DatasetPath = dataSetPath
+        if not os.path.isabs(self.DatasetPath):
+            self.DatasetPath = os.path.abspath(self.DatasetPath)
         self.DatasetLabelInfoCsvPath = os.path.join(self.DatasetPath, 'label_info.csv')
         self.verdiate()
         pass
@@ -105,8 +110,42 @@ class ClassifyTraning_Settings:
 
 
 if __name__ == '__main__':
+    # # test code
+    # settings = ClassifyTraning_Settings()
+    # settings.set_dataset_path('Augmented')
+    # print(settings.to_dict())
+    # print(settings.to_json())
+    # print(ClassifyTraning_Settings.from_json(settings.to_json()).to_json())
+    # 读取输入参数
+    argv = sys.argv[1:]
+    try:
+        opts, args = getopt.getopt(argv, "-h-i:-o:-c:", ["i=", "o=", "c="])
+        if len(opts) == 0:
+            print('please set args: -i <augmented dataset dir path> -o <a json file path>')
+            sys.exit()
+            # inputDir = 'E:\BM3000-TEST\B\FiveCells'
+            # outputDir = 'Augmented'
+        else:
+            for opt, arg in opts:
+                if opt == '-h':
+                    print('please set args: -i <augmented dataset dir path> -o <a json file path>')
+                    sys.exit()
+                else:
+                    if opt in ("-i"):
+                        inputDir = arg
+                    elif opt in ("-o"):
+                        outputJsonFile = arg
+    except getopt.GetoptError:
+        print('please set args: -i <augmented dataset dir path> -o <a json file path>')
+        sys.exit(2)
+
+    if not os.path.isabs(outputJsonFile):
+        outputJsonFile = os.path.abspath(outputJsonFile)
+    dir_path = os.path.dirname(outputJsonFile)
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
     settings = ClassifyTraning_Settings()
-    settings.set_dataset_path('Augmented')
-    print(settings.to_dict())
-    print(settings.to_json())
-    print(ClassifyTraning_Settings.from_json(settings.to_json()).to_json())
+    settings.OutputDirPath = dir_path
+    settings.set_dataset_path(inputDir)
+    settings.to_json_file(outputJsonFile)
+    print('we generate a json file: {}'.format(outputJsonFile))
