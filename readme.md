@@ -1,8 +1,7 @@
 # 分类（识别）模型训练框架使用说明
 
-## 使用步骤
+## 训练步骤
 
-### A. 数据集准备
 
 1. 数据存储：训练用的图像数据以文件夹存储，每个分类文件夹必须以`主类名$子类序号_NeedTrain`格式命名，否则无法被本程序解析。
 
@@ -69,3 +68,23 @@ best_model = torch.load('TellMeCatOrDog_20220315093400_best.pth')
 ```
 
 ![训练输出文件结构](./resources/训练输出文件结构.png)
+
+
+## 模型转到 onnx 和 ncnn
+
+### 1. 将 pth 模型文件转为 onnx 文件
+
+   下面的命令将 TrainedData 文件夹下的 best.pth 模型转为 onnx 模型，并保存到 TrainedData 文件夹中。`-c` 表示模型输入图像的通道数，`-s` 表示模型输入图像的尺寸。
+
+```[CMD]
+python PTH_To_ONNX.py -i TrainedData\best.pth -c 3 -s 224
+```
+
+- 输出 onnx 模型的输入层名称为 `input`
+- 输出层名称为 `output`
+
+### 2. 将 onnx 文件转为 ncnn 模型
+
+   A. 访问网站 <https://convertmodel.com>，上传 onnx 模型后，可转为 ncnn 模型。
+
+   B. 或者在本地使用 onnx2ncnn.exe 输入 onnx 文件路径，和输出路径，得到 ncnn 模型。再用 ncnnoptimize.exe 优化模型结构。

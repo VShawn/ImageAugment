@@ -282,8 +282,8 @@ class ITrainer(object):
                                                                                                       batch_size=self.Settings.BatchSize,
                                                                                                       num_workers=4,
                                                                                                       validate_ratio=0.2)
-        self.logger.info("train_loader items count = {}".format(len(self.train_loader)))
-        self.logger.info("eval_loader items count = {}".format(len(self.eval_loader)))
+        self.logger.info("train_loader items count = {}, epoch count = {}".format(len(self.train_loader.dataset), len(self.train_loader)))
+        self.logger.info("eval_loader items count = {}, epoch count = {}".format(len(self.eval_loader.dataset), len(self.eval_loader)))
 
         # 开始训练
         for current_epoch in range(self.Settings.ResumeEpoch, self.Settings.Epochs):

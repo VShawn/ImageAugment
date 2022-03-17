@@ -9,12 +9,60 @@ import torch
 from types import SimpleNamespace
 from torch import nn, Tensor, optim
 from torchvision import models
+import torch.nn.functional as F
 from torch.utils.data import Dataset as TorchDataset, DataLoader
 from ClassifyPreprocess_DatasetAnalyser import DatasetAnalyser, LabelInfo
 from ClassifyTraining_Settings import ClassifyTraining_Settings
 from ClassifyTraining_Dataset import ClassifyTraining_Dataset
 from tensorboardX import SummaryWriter
 from ClassifyTraining_Trainer import ITrainer
+from ClassifyTraining_Trainer_MobileNetV3 import mobilenet_v3_large
+
+
+class CustomHardswish(nn.Module):
+    """
+    Export-friendly version of nn.Hardswish()
+    """
+
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        return x * F.hardtanh(x + 3, 0., 6.) / 6.
+
+
+def _set_module(model, submodule_key, module):
+    # 核心函数，参考了torch.quantization.fuse_modules()的实现
+    tokens = submodule_key.split('.')
+    sub_tokens = tokens[:-1]
+    cur_mod = model
+    for s in sub_tokens:
+        cur_mod = getattr(cur_mod, s)
+    setattr(cur_mod, tokens[-1], module)
+
+
+def GetMobileNetV3(label_count: int):
+    # 建立模型
+    model = mobilenet_v3_large(pretrained=True) # 加载修改过算子的 mobilenet v3 预训练模型
+    # model = models.mobilenet_v3_large(pretrained=True)
+    # # 替换 ONNX 不支持的算子(可选)
+    # hs = []
+    # for k, m in model.named_modules():
+    #     if isinstance(m, nn.Hardswish):
+    #         hs.append(k)
+    #     pass
+    # for k in hs:
+    #     _set_module(model, k, CustomHardswish())
+    # 修改输出层
+    nn0_in = model.classifier[0].in_features
+    nn0_out = model.classifier[0].out_features
+    model.classifier = nn.Sequential(
+        nn.Linear(nn0_in, nn0_out),
+        nn.Hardswish(),
+        nn.Dropout(0.2, inplace=True),
+        nn.Linear(nn0_out, label_count),
+    )
+    return model
 
 
 class MobileNetV3Trainer(ITrainer):
@@ -24,19 +72,8 @@ class MobileNetV3Trainer(ITrainer):
         '''
         初始化一个新的模型
         '''
-        # 建立模型
-        model = models.mobilenet_v3_large(pretrained=True)
-        # 修改输出层
-        nn0_in = model.classifier[0].in_features
-        nn0_out = model.classifier[0].out_features
-        model.classifier = nn.Sequential(
-            nn.Linear(nn0_in, nn0_out),
-            nn.Hardswish(),
-            nn.Dropout(0.2, inplace=True),
-            nn.Linear(nn0_out, self.Settings.LabelCount),
-        )
-        self.logger.info("Model Init: {}, class num = {}".format(model, self.Settings.LabelCount))
-        return model
+        self.logger.info("Model Init: class num = {}".format(self.Settings.LabelCount))
+        return GetMobileNetV3(self.Settings.LabelCount)
 
     @abstractmethod
     def init_optimizer(self) -> optim.Optimizer:
