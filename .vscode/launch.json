@@ -1,20 +1,63 @@
 {
-    // 使用 IntelliSense 了解相关属性。 
-    // 悬停以查看现有属性的描述。
-    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Python: 当前文件",
-            "type": "python",
-            "request": "launch",
-            "program": "${file}",
-            "console": "integratedTerminal",
-            "justMyCode": true,
-            "args": [
-                "-i",
-                "DemoTrained/demo_train_setting.json",
-            ]
-        }
-    ]
+  // 使用 IntelliSense 了解相关属性。
+  // 悬停以查看现有属性的描述。
+  // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Augmente",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceRoot}/ClassifyPreprocess_DatasetAugmenter.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "args": ["-i", "C:/Unpack/qc_train", "-o", "C:/UnpackQcAugmented"]
+    },
+    {
+      "name": "生成训练配置",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceRoot}/ClassifyTraining_Settings.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "args": [
+        "-i",
+        "C:/Unpack/QcAugmented",
+        "-o",
+        "QcTrained/train_setting.json"
+      ]
+    },
+    {
+      "name": "Train_MobileNetV3",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceRoot}/ClassifyTraining_Trainer_MobileNetV3_Demo.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "args": ["-i", "QcTrained/train_setting.json"]
+    },
+    {
+      "name": "Test_MobileNetV3",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceRoot}/ClassifyTraining_Trainer_MobileNetV3_Demo.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "args": [
+        "-i",
+        "QcTrained/train_setting.json_20220323205125.json",
+        "-t",
+        "C:/Unpack/qc_train/nseq$01_NeedTrain/00a7b5eb41d6736b0c102bd52872beb5_631_1058_1588.bmp"
+      ]
+    },
+    {
+      "name": "当前文件",
+      "type": "python",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "args": ["-i", "C:/Unpack/qc_train", "-o", "C:/UnpackQcAugmented"]
+    }
+  ]
 }

@@ -43,7 +43,7 @@ def _set_module(model, submodule_key, module):
 
 def GetMobileNetV3(label_count: int):
     # 建立模型
-    model = mobilenet_v3_large(pretrained=True) # 加载修改过算子的 mobilenet v3 预训练模型
+    model = mobilenet_v3_large(pretrained=True)  # 加载修改过算子的 mobilenet v3 预训练模型
     # model = models.mobilenet_v3_large(pretrained=True)
     # # 替换 ONNX 不支持的算子(可选)
     # hs = []
@@ -120,8 +120,11 @@ if __name__ == '__main__':
 
     # 读取输入参数
     argv = sys.argv[1:]
+    train_settings_json_path = ""
+    epoch = -1
+    test_image_path = ""
     try:
-        opts, args = getopt.getopt(argv, "-h-i::", ["i="])
+        opts, args = getopt.getopt(argv, "-h-i:-e:-t:", ["i=", "t="])
         if len(opts) == 0:
             print('please set args: -i <train settings json path>')
             sys.exit()
@@ -130,15 +133,24 @@ if __name__ == '__main__':
                 if opt == '-h':
                     print('please set args: -i <train settings json path>')
                     sys.exit()
-                else:
-                    if opt in ("-i"):
-                        inputJson = arg
-                        if os.path.exists(inputJson) == False:
-                            print('train settings json file not exist: {}'.format(inputJson))
-                            sys.exit(1)
+                if opt in ("-i"):
+                    train_settings_json_path = arg
+                    if os.path.exists(train_settings_json_path) == False:
+                        print('train settings json file not exist: {}'.format(train_settings_json_path))
+                        sys.exit(1)
+                if opt in ("-e"):
+                    epoch = int(arg)
+                if opt in ("-t"):
+                    test_image_path = arg
+                    if os.path.exists(test_image_path) == False:
+                        print('test image file not exist: {}'.format(test_image_path))
+                        sys.exit(1)
     except getopt.GetoptError:
         print('please set args: -i <train settings json path>')
         sys.exit(2)
 
-    t = MobileNetV3Trainer(inputJson)
-    t.train()
+    t = MobileNetV3Trainer(train_settings_json_path)
+    if test_image_path == "":
+        t.train()
+    else:
+        t.test(test_image_path, epoch)

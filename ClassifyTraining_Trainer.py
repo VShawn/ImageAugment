@@ -86,6 +86,19 @@ class ITrainer(object):
         model.load_state_dict(checkpoint['model_state_dict'])  # 加载网络权重参数
         return model
 
+    def load_best_pth(self):
+        '''
+        加载最好的模型
+        '''
+        best_path = os.path.join(self.Settings.OutputDirPath, '{}_{}_best.pth').format(self.Settings.ProjectName, self.Settings.TrainingId)
+        if not os.path.exists(best_path):
+            self.logger.error("ResumeFrom {} is not exist".format(epoch))
+        model = torch.load(best_path)
+        if model is None:
+            self.logger.error("ResumeFrom {} is not exist".format(epoch))
+            exit(1)
+        return model
+
     @abstractmethod
     def init_model(self) -> nn.Module:
         '''
@@ -291,6 +304,29 @@ class ITrainer(object):
             self._train_or_eval_one_epoch(current_epoch, True)
             self._train_or_eval_one_epoch(current_epoch, False)
             pass
+
+    def test(self, image_path: str, epoch: int = -1):
+        '''
+        测试一张图片，输入 epoch 小于 0 时，使用 the best 模型
+        '''
+        from ClassifyPreprocess_SingleImageAugmenter import SingleImageAugmenter
+        labels = DatasetAnalyser.ReadFromCsv(self.Settings.DatasetLabelInfoCsvPath).labels
+        labels = dict((item.label_value, item.label_name) for item in labels)
+        from torchvision import transforms
+        rbg = SingleImageAugmenter.open_image(image_path, self.Settings.InputSize)
+        image = transforms.ToTensor()(rbg)
+        image = image.unsqueeze(0)
+        image = image.cuda()
+        model = self.load_checkpoint(epoch) if epoch >= 0 else self.load_best_pth()
+        model.eval()
+        with torch.no_grad():
+            output = model(image)[0]
+            # 输出 top5
+            percentages, indices = torch.sort(output, descending=True)
+            percentages = percentages.softmax(0)
+            for j in range(5):
+                print('{} - {:.3f}'.format(labels[indices[j].item()], percentages[j]))
+        pass
 
 
 # if __name__ == '__main__':

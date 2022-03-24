@@ -12,7 +12,7 @@ from imgaug import parameters as iap
 
 
 class AugmentMakeBorderMode(IntEnum):
-    const = 0,
+    constant = 0,
     edge = 1,
     symmetric = 2,
 

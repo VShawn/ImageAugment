@@ -40,6 +40,7 @@ class DatasetAnalyser(object):
     """
 
     def __init__(self):
+        self.labels: list[LabelInfo] = []  # 标签信息，不一定按照标签顺序（LabelValue）排列
         return
 
     def SetLabelInfos(self, labels: List[LabelInfo]) -> None:
