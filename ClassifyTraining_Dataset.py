@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from ast import Str
 from math import floor
 from multiprocessing.context import assert_spawning
@@ -19,11 +20,12 @@ mean, std = [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
 
 
 class ClassifyTraining_Dataset(TorchDataset):
-    def __init__(self, image_paths: list[str], label_values: list[int], resize_to: int = None, random_crop_rate: tuple[float, float] = (0, 0.05)):
+    def __init__(self, image_paths: list[str], label_values: list[int], resize_to: int = None, random_crop_rate: tuple[float, float] = (0, 0.05), read_image_as_rgb_function=SingleImageAugmenter.open_image_by_opencv_as_rgb):
         self._image_paths = image_paths
         self._label_values = label_values
         self._out_image_size = resize_to
         self._random_crop_rate = random_crop_rate
+        self._read_image_as_rgb_function = read_image_as_rgb_function
         self.transforms = transforms.Compose([
             transforms.RandomVerticalFlip(),
             transforms.RandomHorizontalFlip(),
@@ -32,7 +34,7 @@ class ClassifyTraining_Dataset(TorchDataset):
         ])
 
     def __getitem__(self, index):
-        rbg = SingleImageAugmenter.open_image(self._image_paths[index], self._out_image_size, self._random_crop_rate)
+        rbg = self._read_image_as_rgb_function(self._image_paths[index], self._out_image_size)
         pil_image = Image.fromarray(rbg)
         tensor = self.transforms(pil_image)
         return self._label_values[index], tensor
@@ -41,9 +43,10 @@ class ClassifyTraining_Dataset(TorchDataset):
         return len(self._image_paths)
 
     @staticmethod
-    def get_train_validate_dataset(label_info_csv_path: str, input_image_size: int, validate_ratio=0.2) -> tuple[TorchDataset, TorchDataset]:
+    def get_train_validate_image_list(label_info_csv_path: str, validate_ratio=0.2) -> tuple[list, list, list, list]:
         '''
-        从数据集中生成训练集和测试集
+        从数据集中生成训练集和测试集的文件路径列表
+        调用方法：train_image_paths, train_image_labels, validate_image_paths, validate_image_labels = get_train_validate_image_list(...
         label_info_csv_path: DatasetAnalyser 生成的数据集标签描述 csv 文件路径
         validate_ratio: 提取多少数据作为验证集, 0.2 表示随机抽 20% 作为验证集
         '''
@@ -72,24 +75,27 @@ class ClassifyTraining_Dataset(TorchDataset):
         assert(len(eval_image_paths) == len(validate_image_labels))
         assert(os.path.exists(train_image_paths[0]))
         assert(os.path.exists(eval_image_paths[0]))
-
-        train_dataset = ClassifyTraining_Dataset(train_image_paths, train_image_labels, input_image_size)
-        validate_dataset = ClassifyTraining_Dataset(eval_image_paths, validate_image_labels, input_image_size)
-        return train_dataset, validate_dataset
+        return train_image_paths, train_image_labels, eval_image_paths, validate_image_labels
 
     @staticmethod
     def get_train_validate_data_loader(label_info_csv_path: str, input_image_size: int, batch_size: int, num_workers=4, validate_ratio=0.2, shuffle: bool = True) -> tuple[DataLoader, DataLoader]:
-        td, vd = ClassifyTraining_Dataset.get_train_validate_dataset(label_info_csv_path, input_image_size, validate_ratio)
-        return DataLoader(td, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers), DataLoader(vd, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
+        '''
+        从数据集中生成训练集和测试集
+        label_info_csv_path: DatasetAnalyser 生成的数据集标签描述 csv 文件路径
+        validate_ratio: 提取多少数据作为验证集, 0.2 表示随机抽 20% 作为验证集
+        '''
+        train_image_paths, train_image_labels, validate_image_paths, validate_image_labels = ClassifyTraining_Dataset.get_train_validate_image_list(label_info_csv_path, validate_ratio)
+        train_dataset = ClassifyTraining_Dataset(train_image_paths, train_image_labels, input_image_size)
+        validate_dataset = ClassifyTraining_Dataset(validate_image_paths, validate_image_labels, input_image_size)
+        return DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers), DataLoader(validate_dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
 
 
 if __name__ == '__main__':
     # 测试生成训练集和测试集
-    td, vd = ClassifyTraining_Dataset.get_train_validate_dataset('D:\\UritWorks\\AI\\image_preprocess\\Augmented\\label_info.csv', 257, 0.2)
-    loader = DataLoader(td, batch_size=32, shuffle=True, num_workers=4)
-    print("data size:", len(loader.dataset))
-    print("loader len:", len(loader))
-    for i, (labels, images) in enumerate(loader):
+    tdl, vdl = ClassifyTraining_Dataset.get_train_validate_data_loader('D:\\UritWorks\\AI\\image_preprocess\\Augmented\\label_info.csv', 257, 32)
+    print("data size:", len(tdl.dataset))
+    print("loader len:", len(tdl))
+    for i, (labels, images) in enumerate(tdl):
         print(labels)
         print(images.shape)
         if i > 10:

@@ -4,6 +4,7 @@ import os
 import json
 import time
 import logging
+from tkinter.messagebox import NO
 import torch
 from types import SimpleNamespace
 from torch import nn, Tensor, optim
@@ -168,6 +169,17 @@ class ITrainer(object):
         # return lr
         raise NotImplemented
 
+    @abstractmethod
+    def get_dataloader(self, label_info_csv_path: str, input_image_size: int, batch_size: int) -> tuple[TorchDataset, TorchDataset]:
+        '''
+        初始化数据集，从而确定图片预处理步骤，并初始化训练集和验证集
+        '''
+        # 默认情况下，使用默认的图片预处理步骤，如果需要拓展或者使用自定义的 loader，则在子类中重写本方法
+        train_image_paths, train_image_labels, validate_image_paths, validate_image_labels = ClassifyTraining_Dataset.get_train_validate_image_list(label_info_csv_path, validate_ratio=0.2)
+        train_dataset = ClassifyTraining_Dataset(train_image_paths, train_image_labels, input_image_size)
+        validate_dataset = ClassifyTraining_Dataset(validate_image_paths, validate_image_labels, input_image_size)
+        return DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4), DataLoader(validate_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
+
     def _train_or_eval_one_epoch(self, current_epoch: int, is_train: bool) -> None:
         '''
         执行一次 epoch 的训练或测试
@@ -290,11 +302,9 @@ class ITrainer(object):
             self.Model.cuda()
 
         # 创建 loader
-        self.train_loader, self.eval_loader = ClassifyTraining_Dataset.get_train_validate_data_loader(label_info_csv_path=self.Settings.DatasetLabelInfoCsvPath,
-                                                                                                      input_image_size=self.Settings.InputSize,
-                                                                                                      batch_size=self.Settings.BatchSize,
-                                                                                                      num_workers=4,
-                                                                                                      validate_ratio=0.2)
+        self.train_loader, self.eval_loader = self.get_dataloader(label_info_csv_path=self.Settings.DatasetLabelInfoCsvPath,
+                                                                  input_image_size=self.Settings.InputSize,
+                                                                  batch_size=self.Settings.BatchSize)
         self.logger.info("train_loader items count = {}, epoch count = {}".format(len(self.train_loader.dataset), len(self.train_loader)))
         self.logger.info("eval_loader items count = {}, epoch count = {}".format(len(self.eval_loader.dataset), len(self.eval_loader)))
 
@@ -313,19 +323,26 @@ class ITrainer(object):
         labels = DatasetAnalyser.ReadFromCsv(self.Settings.DatasetLabelInfoCsvPath).labels
         labels = dict((item.label_value, item.label_name) for item in labels)
         from torchvision import transforms
-        rbg = SingleImageAugmenter.open_image(image_path, self.Settings.InputSize)
+        rbg = SingleImageAugmenter.open_image_by_opencv_as_rgb(image_path, self.Settings.InputSize)
+        mean, std = [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
+        my_transforms = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=mean, std=std),
+        ])
         image = transforms.ToTensor()(rbg)
+        image = transforms.Normalize(mean=mean, std=std)(image)
         image = image.unsqueeze(0)
         image = image.cuda()
         model = self.load_checkpoint(epoch) if epoch >= 0 else self.load_best_pth()
         model.eval()
         with torch.no_grad():
             output = model(image)[0]
+            print(output)
             # 输出 top5
             percentages, indices = torch.sort(output, descending=True)
             percentages = percentages.softmax(0)
             for j in range(5):
-                print('{} - {:.3f}'.format(labels[indices[j].item()], percentages[j]))
+                print('{}({}) - {:.8f}'.format(labels[indices[j].item()], indices[j].item(), percentages[j]))
         pass
 
 
@@ -338,5 +355,5 @@ class ITrainer(object):
 #     # s.to_json_file(setting_path)
 #     # t = ITrainer(setting_path)
 #     # t.train()
-#     t = ITrainer(r'D:\UritWorks\AI\image_preprocess\DemoTrained\demo_train_setting.json_20220311113655.json')
+#     t = ITrainer(r'D:\UritWorks\AI\image_preprocess\DemoTrained\demo_traind_setting.json_20220311113655.json')
 #     t.train()

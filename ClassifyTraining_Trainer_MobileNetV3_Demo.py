@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from email.mime import base
 import sys
 import getopt
 import os
@@ -12,6 +13,7 @@ from torchvision import models
 import torch.nn.functional as F
 from torch.utils.data import Dataset as TorchDataset, DataLoader
 from ClassifyPreprocess_DatasetAnalyser import DatasetAnalyser, LabelInfo
+from ClassifyPreprocess_SingleImageAugmenter import SingleImageAugmenter
 from ClassifyTraining_Settings import ClassifyTraining_Settings
 from ClassifyTraining_Dataset import ClassifyTraining_Dataset
 from tensorboardX import SummaryWriter
@@ -104,6 +106,24 @@ class MobileNetV3Trainer(ITrainer):
             self.LrUpdater = torch.optim.lr_scheduler.CosineAnnealingLR(self.Optimizer, T_max=10, last_epoch=current_epoch - 1)
             # self.LrUpdater = torch.optim.lr_scheduler.ReduceLROnPlateau(self.Optimizer)
         self.LrUpdater.step()
+
+    @staticmethod
+    def read_image_as_rgb_and_preprocess_function(path: str, image_size: int):
+        '''
+        当前模型专用的图片读取和预处理方法
+        '''
+        return SingleImageAugmenter.open_image_by_opencv_as_rgb(path, image_size, random_crop_rate=[0, 0.05])
+
+    @abstractmethod
+    def get_dataloader(self, label_info_csv_path: str, input_image_size: int, batch_size: int) -> tuple[TorchDataset, TorchDataset]:
+        '''
+        初始化数据集，从而确定图片预处理步骤，并初始化训练集和验证集
+        '''
+        # 默认情况下，使用默认的图片预处理步骤，如果需要拓展，则在子类中重写本方法
+        train_image_paths, train_image_labels, validate_image_paths, validate_image_labels = ClassifyTraining_Dataset.get_train_validate_image_list(label_info_csv_path, validate_ratio=0.2)
+        train_dataset = ClassifyTraining_Dataset(train_image_paths, train_image_labels, input_image_size, self.read_image_as_rgb_and_preprocess_function)
+        validate_dataset = ClassifyTraining_Dataset(validate_image_paths, validate_image_labels, input_image_size, self.read_image_as_rgb_and_preprocess_function)
+        return DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4), DataLoader(validate_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
 
 
 if __name__ == '__main__':

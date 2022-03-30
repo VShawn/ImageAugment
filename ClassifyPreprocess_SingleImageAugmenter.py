@@ -243,9 +243,9 @@ class SingleImageAugmenter(object):
             pass
 
     @staticmethod
-    def open_image(path: str, resize_to: int = None, random_crop_rate: tuple[float, float] = None) -> np.ndarray:
+    def open_image_by_opencv_as_rgb(path: str, resize_to: int = None, random_crop_rate: tuple[float, float] = None, resize_pad_mode: AugmentMakeBorderMode = AugmentMakeBorderMode.constant, cval=160) -> np.ndarray:
         """
-        使用 opencv 打开图片
+        使用 opencv 打开图片，并转换为 RGB 格式，并进行后续处理
         path: 图片路径
         resize_to: 输出图片的尺寸，为 None 时直接输出原始尺寸，当图像大于 resize_to 时压缩图像，小于 resize_to 时以镜像方式扩充边缘
         random_crop_rate: 边缘随机裁切比例， 输入(0, 0.1) 表示随机裁切掉 0 - 10% 的边缘尺寸
@@ -262,16 +262,16 @@ class SingleImageAugmenter(object):
             h, w, _ = rgb.shape
             if h > resize_to or w > resize_to:
                 if h > w:
+                    w = int(w * resize_to / h)
                     h = resize_to
-                    w = int(resize_to * w / h)
                 else:
+                    h = int(h * resize_to / w)
                     w = resize_to
-                    h = int(resize_to * h / w)
                 rgb = cv2.resize(rgb, (w, h))
             # 尺寸小于目标尺寸时，PAD
             h, w, _ = rgb.shape
             if h < resize_to or w < resize_to:
-                pad = iaa.PadToFixedSize(width=resize_to, height=resize_to, position="center", pad_mode="symmetric")
+                pad = iaa.PadToFixedSize(width=resize_to, height=resize_to, position="center", pad_mode=resize_pad_mode.name, pad_cval=cval)
                 rgb = pad.augment_image(rgb)
             # 最终尺寸检查
             h, w, _ = rgb.shape
@@ -282,14 +282,14 @@ class SingleImageAugmenter(object):
 
 if __name__ == '__main__':
     images = []
-    ia.imshow(SingleImageAugmenter.open_image('test.jpg'))
-    images.append(SingleImageAugmenter.open_image('test.jpg', resize_to=256, random_crop_rate=(0.0, 0.5)))
-    images.append(SingleImageAugmenter.open_image('test.jpg', resize_to=256, random_crop_rate=(0.0, 0.5)))
-    images.append(SingleImageAugmenter.open_image('test.jpg', resize_to=256, random_crop_rate=(0.0, 0.5)))
-    images.append(SingleImageAugmenter.open_image('test.jpg', resize_to=256, random_crop_rate=(0.0, 0.5)))
-    images.append(SingleImageAugmenter.open_image('test.jpg', resize_to=256, random_crop_rate=(0.0, 0.5)))
-    images.append(SingleImageAugmenter.open_image('test.jpg', resize_to=256, random_crop_rate=(0.0, 0.5)))
-    images.append(SingleImageAugmenter.open_image('test.jpg', resize_to=256, random_crop_rate=(0.0, 0.5)))
+    ia.imshow(SingleImageAugmenter.open_image_by_opencv_as_rgb('test.jpg'))
+    images.append(SingleImageAugmenter.open_image_by_opencv_as_rgb('test.jpg', resize_to=256, random_crop_rate=(0.0, 0.5)))
+    images.append(SingleImageAugmenter.open_image_by_opencv_as_rgb('test.jpg', resize_to=256, random_crop_rate=(0.0, 0.5)))
+    images.append(SingleImageAugmenter.open_image_by_opencv_as_rgb('test.jpg', resize_to=256, random_crop_rate=(0.0, 0.5)))
+    images.append(SingleImageAugmenter.open_image_by_opencv_as_rgb('test.jpg', resize_to=256, random_crop_rate=(0.0, 0.5)))
+    images.append(SingleImageAugmenter.open_image_by_opencv_as_rgb('test.jpg', resize_to=256, random_crop_rate=(0.0, 0.5)))
+    images.append(SingleImageAugmenter.open_image_by_opencv_as_rgb('test.jpg', resize_to=256, random_crop_rate=(0.0, 0.5)))
+    images.append(SingleImageAugmenter.open_image_by_opencv_as_rgb('test.jpg', resize_to=256, random_crop_rate=(0.0, 0.5)))
     ia.imshow(np.hstack(images))
 
     aff = SingleImageAugmenter()

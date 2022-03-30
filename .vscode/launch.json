@@ -51,6 +51,22 @@
       ]
     },
     {
+      "name": "PTH_To_ONNX",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceRoot}/PTH_To_ONNX.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "args": [
+        "-i",
+        "QcTrained/ModelForDemo_20220323205125_best.pth",
+        "-c",
+        "3",
+        "-s",
+        "224"
+      ]
+    },
+    {
       "name": "当前文件",
       "type": "python",
       "request": "launch",
