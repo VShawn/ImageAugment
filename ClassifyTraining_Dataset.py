@@ -27,8 +27,6 @@ class ClassifyTraining_Dataset(TorchDataset):
         self._random_crop_rate = random_crop_rate
         self._read_image_as_rgb_function = read_image_as_rgb_function
         self.transforms = transforms.Compose([
-            transforms.RandomVerticalFlip(),
-            transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
             transforms.Normalize(mean=mean, std=std),
         ])

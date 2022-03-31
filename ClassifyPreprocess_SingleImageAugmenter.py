@@ -137,7 +137,7 @@ class SingleImageAugmenter(object):
         :return: 扩充后的图像列表
         '''
         # image = imageio.imread(image_path)  # 读取格式为 RGB # 若用 opencv 读取，则格式为 BGR，因此需要转换
-        image: np.ndarray = self.open_image(image_path)
+        image: np.ndarray = self.open_image_by_opencv_as_rgb(image_path)
         return self.run_by_image_data(image)
 
     def run_by_image_data(self, image: np.ndarray) -> list:

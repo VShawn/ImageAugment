@@ -112,7 +112,7 @@ class MobileNetV3Trainer(ITrainer):
         '''
         当前模型专用的图片读取和预处理方法
         '''
-        return SingleImageAugmenter.open_image_by_opencv_as_rgb(path, image_size, random_crop_rate=[0, 0.05])
+        return SingleImageAugmenter.open_image_by_opencv_as_rgb(path, image_size)
 
     @abstractmethod
     def get_dataloader(self, label_info_csv_path: str, input_image_size: int, batch_size: int) -> tuple[TorchDataset, TorchDataset]:

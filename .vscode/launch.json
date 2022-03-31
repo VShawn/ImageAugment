@@ -47,7 +47,8 @@
         "-i",
         "QcTrained/train_setting.json_20220323205125.json",
         "-t",
-        "C:/Unpack/qc_train/nseq$01_NeedTrain/00a7b5eb41d6736b0c102bd52872beb5_631_1058_1588.bmp"
+        // "C:/Unpack/qc_train/nseq$01_NeedTrain/00aeb73257aa07940172603c5af88803_627_414_1082.bmp"
+        "C:/Unpack/qc_train/nseq$02_NeedTrain/0b42bef75d7f6f36955ad6480ba5157e_252_1312_1528.bmp"
       ]
     },
     {
@@ -59,7 +60,7 @@
       "justMyCode": true,
       "args": [
         "-i",
-        "QcTrained/ModelForDemo_20220323205125_best.pth",
+        "QcTrained/ModelForDemo_20220331110916_best - 副本.pth",
         "-c",
         "3",
         "-s",
