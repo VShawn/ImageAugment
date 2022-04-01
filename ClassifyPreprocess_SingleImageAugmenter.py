@@ -143,7 +143,7 @@ class SingleImageAugmenter(object):
     def run_by_image_data(self, image: np.ndarray) -> list:
         '''
         执行扩充，输入为 imageio.imread(image_path) 读取的图片 RGB 格式。
-        :param image: 图像
+        :param image: 图像，可以通过 self.open_image_by_opencv_as_rgb(image_path) 读取
         :augmentCount: 扩充出的图片数量，输出数量必然大于或等于这个值
         :return: 扩充后的图像列表
         '''
@@ -243,7 +243,8 @@ class SingleImageAugmenter(object):
             pass
 
     @staticmethod
-    def open_image_by_opencv_as_rgb(path: str, resize_to: int = None, random_crop_rate: tuple[float, float] = None, resize_pad_mode: AugmentMakeBorderMode = AugmentMakeBorderMode.constant, cval=160) -> np.ndarray:
+    def open_image_by_opencv_as_rgb(path: str, resize_to: int = None, random_crop_rate: tuple[float, float] = None,
+                                    pad_mode: AugmentMakeBorderMode = AugmentMakeBorderMode.constant, pad_cval=160) -> np.ndarray:
         """
         使用 opencv 打开图片，并转换为 RGB 格式，并进行后续处理
         path: 图片路径
@@ -271,7 +272,66 @@ class SingleImageAugmenter(object):
             # 尺寸小于目标尺寸时，PAD
             h, w, _ = rgb.shape
             if h < resize_to or w < resize_to:
-                pad = iaa.PadToFixedSize(width=resize_to, height=resize_to, position="center", pad_mode=resize_pad_mode.name, pad_cval=cval)
+                pad = iaa.PadToFixedSize(width=resize_to, height=resize_to, position="center", pad_mode=pad_mode.name, pad_cval=pad_cval)
+                rgb = pad.augment_image(rgb)
+            # 最终尺寸检查
+            h, w, _ = rgb.shape
+            if h != resize_to or w != resize_to:
+                rgb = cv2.resize(rgb, (resize_to, resize_to))
+        return rgb
+
+    @staticmethod
+    def open_image_by_opencv_and_preprocess_as_rgb(path: str, resize_to: int = None, random_crop_rate: tuple[float, float] = (0, 0),
+                                                   flipP: float = 0.3, rotate: tuple[float, float] = (-180, 180), scale: tuple[float, float] = (1.0, 1.0),
+                                                   contrastAdjust: tuple[float, float] = (0.95, 1.05), GaussianNoiseRange: tuple[float, float] = (0, 5),
+                                                   pad_mode: AugmentMakeBorderMode = AugmentMakeBorderMode.constant, pad_cval=160) -> np.ndarray:
+        """
+        使用 opencv 打开图片，并转换为 RGB 格式，并进行后续处理
+        path: 图片路径
+        resize_to: 输出图片的尺寸，为 None 时直接输出原始尺寸，当图像大于 resize_to 时压缩图像，小于 resize_to 时以镜像方式扩充边缘
+        random_crop_rate: 边缘随机裁切比例， 输入(0, 0.1) 表示随机裁切掉 0 - 10% 的边缘尺寸
+        flipP: 水平、竖直翻转概率
+        rotate: 随机旋转角度范围
+        scale: 随机缩放比例范围
+        contrastAdjust: 随机对比度调整范围
+        GaussianNoiseRange: 随机高斯噪声范围
+        pad_mode: 填充方式
+        pad_cval: constant填充方式的填充值
+        """
+        bgr = cv2.imread(path)
+        # BGR to RGB
+        rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+        # 处理序列
+        seq = iaa.Sequential([
+            iaa.Crop(percent=random_crop_rate),
+            iaa.Fliplr(flipP),
+            iaa.Flipud(flipP),
+            iaa.Affine(
+                rotate=rotate,
+                scale=scale,
+                mode=pad_mode.name,
+                cval=pad_cval
+            ),
+            iaa.Multiply(contrastAdjust),  # 改变亮度,不影响关键点
+            iaa.ContrastNormalization(contrastAdjust),  # 改变对比度,不影响关键点
+            iaa.AdditiveGaussianNoise(scale=GaussianNoiseRange),  # 加入高斯噪声
+        ])
+        rgb = seq.augment_image(rgb)
+        if resize_to is not None:
+            # 尺寸大于目标尺寸时，保持宽高比缩小
+            h, w, _ = rgb.shape
+            if h > resize_to or w > resize_to:
+                if h > w:
+                    w = int(w * resize_to / h)
+                    h = resize_to
+                else:
+                    h = int(h * resize_to / w)
+                    w = resize_to
+                rgb = cv2.resize(rgb, (w, h))
+            # 尺寸小于目标尺寸时，PAD
+            h, w, _ = rgb.shape
+            if h < resize_to or w < resize_to:
+                pad = iaa.PadToFixedSize(width=resize_to, height=resize_to, position="center", pad_mode=pad_mode.name, pad_cval=pad_cval)
                 rgb = pad.augment_image(rgb)
             # 最终尺寸检查
             h, w, _ = rgb.shape
@@ -282,7 +342,8 @@ class SingleImageAugmenter(object):
 
 if __name__ == '__main__':
     images = []
-    ia.imshow(SingleImageAugmenter.open_image_by_opencv_as_rgb('test.jpg'))
+    test = SingleImageAugmenter.open_image_by_opencv_as_rgb('test.jpg')
+    ia.imshow(test)
     images.append(SingleImageAugmenter.open_image_by_opencv_as_rgb('test.jpg', resize_to=256, random_crop_rate=(0.0, 0.5)))
     images.append(SingleImageAugmenter.open_image_by_opencv_as_rgb('test.jpg', resize_to=256, random_crop_rate=(0.0, 0.5)))
     images.append(SingleImageAugmenter.open_image_by_opencv_as_rgb('test.jpg', resize_to=256, random_crop_rate=(0.0, 0.5)))
@@ -290,6 +351,16 @@ if __name__ == '__main__':
     images.append(SingleImageAugmenter.open_image_by_opencv_as_rgb('test.jpg', resize_to=256, random_crop_rate=(0.0, 0.5)))
     images.append(SingleImageAugmenter.open_image_by_opencv_as_rgb('test.jpg', resize_to=256, random_crop_rate=(0.0, 0.5)))
     images.append(SingleImageAugmenter.open_image_by_opencv_as_rgb('test.jpg', resize_to=256, random_crop_rate=(0.0, 0.5)))
+    ia.imshow(np.hstack(images))
+
+    images.clear()
+    images.append(SingleImageAugmenter.open_image_by_opencv_and_preprocess_as_rgb('test.jpg', resize_to=256))
+    images.append(SingleImageAugmenter.open_image_by_opencv_and_preprocess_as_rgb('test.jpg', resize_to=256))
+    images.append(SingleImageAugmenter.open_image_by_opencv_and_preprocess_as_rgb('test.jpg', resize_to=256))
+    images.append(SingleImageAugmenter.open_image_by_opencv_and_preprocess_as_rgb('test.jpg', resize_to=256))
+    images.append(SingleImageAugmenter.open_image_by_opencv_and_preprocess_as_rgb('test.jpg', resize_to=256))
+    images.append(SingleImageAugmenter.open_image_by_opencv_and_preprocess_as_rgb('test.jpg', resize_to=256))
+    images.append(SingleImageAugmenter.open_image_by_opencv_and_preprocess_as_rgb('test.jpg', resize_to=256))
     ia.imshow(np.hstack(images))
 
     aff = SingleImageAugmenter()

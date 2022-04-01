@@ -1,1 +1,1 @@
-python ClassifyTraining_Settings.py -i MyAugmented -o Trained\train_setting.json
+python ClassifyTraining_Settings.py -i C:\Unpack\QcAugmented -o QcTrained\train_setting.json

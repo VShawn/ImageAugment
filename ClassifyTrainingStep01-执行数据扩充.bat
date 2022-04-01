@@ -1,1 +1,1 @@
-python ClassifyPreprocess_DatasetAugmenter.py -i E:\BM3000-TEST\B\FiveCells -o MyAugmented
+python ClassifyPreprocess_DatasetAugmenter.py -i C:\Unpack\qc_train -o C:\Unpack\QcAugmented

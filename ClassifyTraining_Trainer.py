@@ -170,12 +170,14 @@ class ITrainer(object):
         raise NotImplemented
 
     @abstractmethod
-    def get_dataloader(self, label_info_csv_path: str, input_image_size: int, batch_size: int) -> tuple[TorchDataset, TorchDataset]:
+    def get_dataloader(self, train_image_paths: list, train_image_labels: list, validate_image_paths: list, validate_image_labels: list, input_image_size: int, batch_size: int) -> tuple[TorchDataset, TorchDataset]:
         '''
+        根据传入的图片路径和标签序列
         初始化数据集，从而确定图片预处理步骤，并初始化训练集和验证集
         '''
+        assert len(train_image_paths) == len(train_image_labels)
+        assert len(validate_image_paths) == len(validate_image_labels)
         # 默认情况下，使用默认的图片预处理步骤，如果需要拓展或者使用自定义的 loader，则在子类中重写本方法
-        train_image_paths, train_image_labels, validate_image_paths, validate_image_labels = ClassifyTraining_Dataset.get_train_validate_image_list(label_info_csv_path, validate_ratio=0.2)
         train_dataset = ClassifyTraining_Dataset(train_image_paths, train_image_labels, input_image_size)
         validate_dataset = ClassifyTraining_Dataset(validate_image_paths, validate_image_labels, input_image_size)
         return DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4), DataLoader(validate_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
@@ -301,15 +303,17 @@ class ITrainer(object):
                 self.Model = nn.DataParallel(self.Model, device_ids=list(range(self.Settings.UseGpuCount)))
             self.Model.cuda()
 
-        # 创建 loader
-        self.train_loader, self.eval_loader = self.get_dataloader(label_info_csv_path=self.Settings.DatasetLabelInfoCsvPath,
-                                                                  input_image_size=self.Settings.InputSize,
-                                                                  batch_size=self.Settings.BatchSize)
-        self.logger.info("train_loader items count = {}, epoch count = {}".format(len(self.train_loader.dataset), len(self.train_loader)))
-        self.logger.info("eval_loader items count = {}, epoch count = {}".format(len(self.eval_loader.dataset), len(self.eval_loader)))
+        # 设置训练集和验证集
+        train_image_paths, train_image_labels, validate_image_paths, validate_image_labels = ClassifyTraining_Dataset.get_train_validate_image_list(self.label_info_csv_path, validate_ratio=0.2)
 
         # 开始训练
         for current_epoch in range(self.Settings.ResumeEpoch, self.Settings.Epochs):
+            # 创建 loader
+            self.train_loader, self.eval_loader = self.get_dataloader(train_image_paths=train_image_paths, train_image_labels=train_image_labels, validate_image_paths=validate_image_paths, validate_image_labels=validate_image_labels,
+                                                                      input_image_size=self.Settings.InputSize,
+                                                                      batch_size=self.Settings.BatchSize)
+            self.logger.info("train_loader items count = {}, epoch count = {}".format(len(self.train_loader.dataset), len(self.train_loader)))
+            self.logger.info("eval_loader items count = {}, epoch count = {}".format(len(self.eval_loader.dataset), len(self.eval_loader)))
             self.logger.info('epoch {} start'.format(current_epoch))
             self._train_or_eval_one_epoch(current_epoch, True)
             self._train_or_eval_one_epoch(current_epoch, False)
