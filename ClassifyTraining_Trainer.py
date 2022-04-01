@@ -304,9 +304,14 @@ class ITrainer(object):
             self.Model.cuda()
 
         # 设置训练集和验证集
-        train_image_paths, train_image_labels, validate_image_paths, validate_image_labels = ClassifyTraining_Dataset.get_train_validate_image_list(self.label_info_csv_path, validate_ratio=0.2)
+        train_image_paths, train_image_labels, validate_image_paths, validate_image_labels = ClassifyTraining_Dataset.get_train_validate_image_list(
+            self.Settings.DatasetLabelInfoCsvPath, validate_ratio=0.2)
+        # 验证所有标签在正确的范围内，即所有标签值都要小于 self.Settings.LabelCount
+        if len([item for item in train_image_labels if item >= self.Settings.LabelCount or item < 0]) > 0 or len([item for item in validate_image_labels if item >= self.Settings.LabelCount or item < 0]) > 0:
+            self.logger.error("Label value is out of range")
+            exit(1)
 
-        # 开始训练
+            # 开始训练
         for current_epoch in range(self.Settings.ResumeEpoch, self.Settings.Epochs):
             # 创建 loader
             self.train_loader, self.eval_loader = self.get_dataloader(train_image_paths=train_image_paths, train_image_labels=train_image_labels, validate_image_paths=validate_image_paths, validate_image_labels=validate_image_labels,

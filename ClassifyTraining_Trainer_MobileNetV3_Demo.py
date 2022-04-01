@@ -122,9 +122,11 @@ class MobileNetV3Trainer(ITrainer):
         '''
         assert len(train_image_paths) == len(train_image_labels)
         assert len(validate_image_paths) == len(validate_image_labels)
+        tps, tls = ClassifyTraining_Dataset.get_balance_sample_list_by_oversampling(train_image_paths, train_image_labels)
+        vps, vls = ClassifyTraining_Dataset.get_balance_sample_list_by_oversampling(validate_image_paths, validate_image_labels)
         # 默认情况下，使用默认的图片预处理步骤，如果需要拓展或者使用自定义的 loader，则在子类中重写本方法
-        train_dataset = ClassifyTraining_Dataset(train_image_paths, train_image_labels, input_image_size, self.read_image_as_rgb_and_preprocess_function)
-        validate_dataset = ClassifyTraining_Dataset(validate_image_paths, validate_image_labels, input_image_size, self.read_image_as_rgb_and_preprocess_function)
+        train_dataset = ClassifyTraining_Dataset(tps, tls, input_image_size, self.read_image_as_rgb_and_preprocess_function)
+        validate_dataset = ClassifyTraining_Dataset(vps, vls, input_image_size, self.read_image_as_rgb_and_preprocess_function)
         return DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4), DataLoader(validate_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
 
 
