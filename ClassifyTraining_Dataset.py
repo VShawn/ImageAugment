@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from ast import Str
+from distutils.log import debug
 from math import floor
 from multiprocessing.context import assert_spawning
 import sys
@@ -101,9 +102,19 @@ class ClassifyTraining_Dataset(TorchDataset):
         max_count = label_count_list[0][1]
         # 将所有类别都补充到最大数量
         for label, count in label_count_list:
-            # 如果数量不足，则随机 random.sample 抽取补充到最大数量
+            # 如果数量不足，则随机抽取补充到最大数量
             if count < max_count:
-                path_list[label].extend(random.sample(path_list[label], max_count - count))
+                tmp = []
+                # 随机打乱后抽取
+                random.shuffle(path_list[label])
+                # 循环填充直至数量达到最大数量
+                while len(tmp) < max_count:
+                    tmp.extend(path_list[label])
+                # 截取所需数量
+                path_list[label] = tmp[0:max_count]
+            print('label: %d, %d, count: %d, max = %d' % (label, count, len(path_list[label]), max_count))
+            assert(len(path_list[label]) == max_count)
+
         # 将所有标签的文件路径拼接起来
         image_paths = []
         image_labels = []

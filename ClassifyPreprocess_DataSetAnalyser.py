@@ -85,6 +85,6 @@ class DatasetAnalyser(object):
 if __name__ == '__main__':
     # 分析指定文件夹下的文件夹名称，生成一个配置文件
     analyser = DatasetAnalyser()
-    analyser.SetPath('E:\BM3000-TEST\B\FiveCells')
-    analyser.SaveToCsv("test.csv")
+    analyser.SetPath('C:\\Unpack\\qc_train')
+    analyser.SaveToCsv('C:\\Unpack\\qc_train\\label_info.csv')
     a2 = DatasetAnalyser.ReadFromCsv("test.csv")
