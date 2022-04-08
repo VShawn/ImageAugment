@@ -306,6 +306,16 @@ class ITrainer(object):
         # 设置训练集和验证集
         train_image_paths, train_image_labels, validate_image_paths, validate_image_labels = ClassifyTraining_Dataset.get_train_validate_image_list(
             self.Settings.DatasetLabelInfoCsvPath, validate_ratio=0.2)
+        # 保存训练集、验证集的路径和标签到txt
+        with open(os.path.join(self.Settings.OutputDirPath, '{}_{}_train_image_paths.txt'.format(self.Settings.ProjectName, self.Settings.TrainingId)), 'w') as f:
+            f.write('\n'.join(train_image_paths))
+        with open(os.path.join(self.Settings.OutputDirPath, '{}_{}_train_image_labels.txt'.format(self.Settings.ProjectName, self.Settings.TrainingId)), 'w') as f:
+            f.write('\n'.join(train_image_labels))
+        with open(os.path.join(self.Settings.OutputDirPath, '{}_{}_validate_image_paths.txt'.format(self.Settings.ProjectName, self.Settings.TrainingId)), 'w') as f:
+            f.write('\n'.join(validate_image_paths))
+        with open(os.path.join(self.Settings.OutputDirPath, '{}_{}_validate_image_labels.txt'.format(self.Settings.ProjectName, self.Settings.TrainingId)), 'w') as f:
+            f.write('\n'.join(validate_image_labels))
+
         # 验证所有标签在正确的范围内，即所有标签值都要小于 self.Settings.LabelCount
         if len([item for item in train_image_labels if item >= self.Settings.LabelCount or item < 0]) > 0 or len([item for item in validate_image_labels if item >= self.Settings.LabelCount or item < 0]) > 0:
             self.logger.error("Label value is out of range")

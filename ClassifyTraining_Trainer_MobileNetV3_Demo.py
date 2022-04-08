@@ -101,9 +101,9 @@ class MobileNetV3Trainer(ITrainer):
     @abstractmethod
     def optimizer_lr_adjust(self, learning_rate_base: float, current_epoch: int) -> None:
         if self.LrUpdater is None:
-            # self.LrUpdater = torch.optim.lr_scheduler.StepLR(self.Optimizer, step_size=5, gamma=0.1, last_epoch=current_epoch - 1)
+            self.LrUpdater = torch.optim.lr_scheduler.StepLR(self.Optimizer, step_size=100, gamma=0.1, last_epoch=current_epoch - 1)
             # self.LrUpdater = torch.optim.lr_scheduler.ExponentialLR(self.Optimizer, gamma=0.1, last_epoch=current_epoch - 1)
-            self.LrUpdater = torch.optim.lr_scheduler.CosineAnnealingLR(self.Optimizer, T_max=10, last_epoch=current_epoch - 1)
+            # self.LrUpdater = torch.optim.lr_scheduler.CosineAnnealingLR(self.Optimizer, T_max=10, last_epoch=current_epoch - 1)
             # self.LrUpdater = torch.optim.lr_scheduler.ReduceLROnPlateau(self.Optimizer)
         self.LrUpdater.step()
 
@@ -126,7 +126,7 @@ class MobileNetV3Trainer(ITrainer):
         vps, vls = ClassifyTraining_Dataset.get_balance_sample_list_by_oversampling(validate_image_paths, validate_image_labels)
         # 默认情况下，使用默认的图片预处理步骤，如果需要拓展或者使用自定义的 loader，则在子类中重写本方法
         train_dataset = ClassifyTraining_Dataset(tps, tls, input_image_size, self.read_image_as_rgb_and_preprocess_function)
-        validate_dataset = ClassifyTraining_Dataset(vps, vls, input_image_size, self.read_image_as_rgb_and_preprocess_function)
+        validate_dataset = ClassifyTraining_Dataset(validate_image_paths, vls, input_image_size, self.read_image_as_rgb_and_preprocess_function)
         return DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4), DataLoader(validate_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
 
 
