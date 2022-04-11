@@ -34,7 +34,7 @@
       "program": "${workspaceRoot}/ClassifyTraining_Trainer_MobileNetV3_Demo.py",
       "console": "integratedTerminal",
       "justMyCode": true,
-      "args": ["-i", "QcTrained/train_setting.json"]
+      "args": ["-i", "QcTrained2/train_setting.json"]
     },
     {
       "name": "Test_MobileNetV3",
@@ -45,10 +45,10 @@
       "justMyCode": true,
       "args": [
         "-i",
-        "QcTrained/train_setting.json_20220323205125.json",
+        "QcTrained2/train_setting.json_20220408161332.json",
         "-t",
         // "C:/Unpack/qc_train/nseq$01_NeedTrain/00aeb73257aa07940172603c5af88803_627_414_1082.bmp"
-        "C:/Unpack/qc_train/nseq$02_NeedTrain/0b42bef75d7f6f36955ad6480ba5157e_252_1312_1528.bmp"
+        "C:/Unpack/qc_train/hya$01_NeedTrain/f880773720597026645a4791f63d986c_45_860_2.bmp"
       ]
     },
     {

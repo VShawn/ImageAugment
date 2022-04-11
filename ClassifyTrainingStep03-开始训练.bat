@@ -1,1 +1,0 @@
-python ClassifyTraining_Trainer_MobileNetV3_Demo.py -i QcTrained2\train_setting.json
