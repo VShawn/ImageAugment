@@ -6,7 +6,7 @@ import re
 import time
 import logging
 from math import floor
-from ClassifyPreprocess_DatasetAnalyser import DatasetAnalyser, LabelInfo
+from ClassifyPreprocess_DataSetAnalyser import DatasetAnalyser, LabelInfo
 from ClassifyPreprocess_SingleImageAugmenter import SingleImageAugmenter
 
 

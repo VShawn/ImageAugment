@@ -8,7 +8,7 @@
       "name": "Augmente",
       "type": "python",
       "request": "launch",
-      "program": "${workspaceRoot}/ClassifyPreprocess_DatasetAugmenter.py",
+      "program": "${workspaceRoot}/ClassifyPreprocess_DataSetAugmenter.py",
       "console": "integratedTerminal",
       "justMyCode": true,
       "args": ["-i", "C:/Unpack/qc_train", "-o", "C:/UnpackQcAugmented"]

@@ -11,7 +11,7 @@
    1. 假设上一步骤中的数据集存放于 `E:\BM3000-TEST\B\FiveCells`
    2. 运行脚本生成数据扩充配置
 
-      例如`python ClassifyPreprocess_DatasetAugmenter.py -i E:\BM3000-TEST\B\FiveCells -o MyAugmented`
+      例如`python ClassifyPreprocess_DataSetAugmenter.py -i E:\BM3000-TEST\B\FiveCells -o MyAugmented`
 
       如果这是第一次运行脚本，则在数据集文件夹`E:\BM3000-TEST\B\FiveCells` 中生成一个扩充配置文件。
 
@@ -27,7 +27,7 @@
       7. Step4_GaussianNoiseCount：添加高斯噪声次数
       8. Step4_GaussianNoiseRange：高斯噪声范围
       9. AugmentCount：总的扩充数量，self.Step1_RotateCount = int(augmentCount / (1 + self.Step0_FlipCount) / (1 + self.Step2_ScaleCount) / (1 + self.Step3_ContrastAdjustCount) / (1 + self.Step4_GaussianNoiseCount))
-   4. 修改配置完成后，再次运行数据扩充脚本`python ClassifyPreprocess_DatasetAugmenter.py -i E:\BM3000-TEST\B\FiveCells -o MyAugmented`，此时将开始数据扩充并保存到 `MyAugmented` 中，同时会生成标签信息 `label_info.csv`，`label_info.csv` 将在训练脚本中被使用。
+   4. 修改配置完成后，再次运行数据扩充脚本`python ClassifyPreprocess_DataSetAugmenter.py -i E:\BM3000-TEST\B\FiveCells -o MyAugmented`，此时将开始数据扩充并保存到 `MyAugmented` 中，同时会生成标签信息 `label_info.csv`，`label_info.csv` 将在训练脚本中被使用。
 
 3. 创建你的训练脚本（可选）
    1. 如果你想使用自定义的分类模型、优化器、损失函数、LR调整策略，可以自定义你的训练脚本。

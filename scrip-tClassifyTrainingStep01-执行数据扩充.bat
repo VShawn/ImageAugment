@@ -1,1 +1,1 @@
-python ClassifyPreprocess_DatasetAugmenter.py -i C:\Unpack\qc_train -o C:\Unpack\QcAugmented
+python ClassifyPreprocess_DataSetAugmenter.py -i C:\Unpack\qc_train -o C:\Unpack\QcAugmented

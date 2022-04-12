@@ -11,7 +11,7 @@ import re
 import time
 import random
 from PIL import Image
-from ClassifyPreprocess_DatasetAnalyser import DatasetAnalyser, LabelInfo
+from ClassifyPreprocess_DataSetAnalyser import DatasetAnalyser, LabelInfo
 from ClassifyPreprocess_SingleImageAugmenter import SingleImageAugmenter
 from torchvision import transforms
 from torch.utils.data import Dataset as TorchDataset, DataLoader

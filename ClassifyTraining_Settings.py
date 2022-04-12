@@ -8,7 +8,7 @@ import time
 import logging
 
 from httpx import patch
-from ClassifyPreprocess_DatasetAnalyser import DatasetAnalyser, LabelInfo
+from ClassifyPreprocess_DataSetAnalyser import DatasetAnalyser, LabelInfo
 
 
 class ClassifyTraining_Settings:

@@ -12,7 +12,7 @@ from torch import nn, Tensor, optim
 from torchvision import models
 import torch.nn.functional as F
 from torch.utils.data import Dataset as TorchDataset, DataLoader
-from ClassifyPreprocess_DatasetAnalyser import DatasetAnalyser, LabelInfo
+from ClassifyPreprocess_DataSetAnalyser import DatasetAnalyser, LabelInfo
 from ClassifyPreprocess_SingleImageAugmenter import SingleImageAugmenter
 from ClassifyTraining_Settings import ClassifyTraining_Settings
 from ClassifyTraining_Dataset import ClassifyTraining_Dataset
