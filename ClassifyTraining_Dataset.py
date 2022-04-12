@@ -42,10 +42,11 @@ class ClassifyTraining_Dataset(TorchDataset):
         return len(self._image_paths)
 
     @staticmethod
-    def get_train_validate_image_list(label_info_csv_path: str, validate_ratio=0.2) -> tuple[list, list, list, list]:
+    def get_train_validate_image_list_random(label_info_csv_path: str, validate_ratio=0.2) -> tuple[list[str], list[int], list[str], list[int]]:
         '''
         从数据集中生成训练集和测试集的文件路径列表
-        调用方法：train_image_paths, train_image_labels, validate_image_paths, validate_image_labels = get_train_validate_image_list(...
+        训练集和测试集以随机抽取的方式，从各个分类中按比例抽取
+        调用方法：train_image_paths, train_image_labels, validate_image_paths, validate_image_labels = get_train_validate_image_list_random(...
         label_info_csv_path: DatasetAnalyser 生成的数据集标签描述 csv 文件路径
         validate_ratio: 提取多少数据作为验证集, 0.2 表示随机抽 20% 作为验证集
         '''
@@ -112,7 +113,7 @@ class ClassifyTraining_Dataset(TorchDataset):
                     tmp.extend(path_list[label])
                 # 截取所需数量
                 path_list[label] = tmp[0:max_count]
-            print('label: %d, %d, count: %d, max = %d' % (label, count, len(path_list[label]), max_count))
+            # print('label: %d, %d, count: %d, max = %d' % (label, count, len(path_list[label]), max_count))
             assert(len(path_list[label]) == max_count)
 
         # 将所有标签的文件路径拼接起来
@@ -131,14 +132,14 @@ class ClassifyTraining_Dataset(TorchDataset):
         label_info_csv_path: DatasetAnalyser 生成的数据集标签描述 csv 文件路径
         validate_ratio: 提取多少数据作为验证集, 0.2 表示随机抽 20% 作为验证集
         '''
-        train_image_paths, train_image_labels, validate_image_paths, validate_image_labels = ClassifyTraining_Dataset.get_train_validate_image_list(label_info_csv_path, validate_ratio)
+        train_image_paths, train_image_labels, validate_image_paths, validate_image_labels = ClassifyTraining_Dataset.get_train_validate_image_list_random(label_info_csv_path, validate_ratio)
         train_dataset = ClassifyTraining_Dataset(train_image_paths, train_image_labels, input_image_size)
         validate_dataset = ClassifyTraining_Dataset(validate_image_paths, validate_image_labels, input_image_size)
         return DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers), DataLoader(validate_dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
 
 
 if __name__ == '__main__':
-    train_image_paths, train_image_labels, validate_image_paths, validate_image_labels = ClassifyTraining_Dataset.get_train_validate_image_list(
+    train_image_paths, train_image_labels, validate_image_paths, validate_image_labels = ClassifyTraining_Dataset.get_train_validate_image_list_random(
         'D:\\UritWorks\\AI\\image_preprocess\\Augmented\\label_info.csv', 0.2)
     train_image_paths, train_image_labels = ClassifyTraining_Dataset.get_balance_sample_list_by_oversampling(train_image_paths, train_image_labels)
 

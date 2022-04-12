@@ -29,7 +29,7 @@ class ClassifyTraining_Settings:
         self.UseGpuCount: int = 1  # 用几个GPU训练，0 则用 CPU 训练
         self.OutputDirPath: str = "DemoTrained"  # 输出模型路径
         self.ResumeEpoch: int = 0  # 恢复从哪个 Epoch 恢复训练
-        self.ResumeLR: float = 0.01  # 恢复训练时的学习率
+        self.ResumeId: str = ""  # 以当前时间作为本次训练Id与文件名，每次运行训练时，都会生成一个新的Id
 
     def get_checkpoint_path(self, epoch: int):
         dir = os.path.join(self.OutputDirPath, '{}_{}_checkpoints'.format(self.ProjectName, self.TrainingId))
@@ -53,7 +53,7 @@ class ClassifyTraining_Settings:
         开始新的训练，生成新的训练Id
         '''
         if self.ResumeEpoch > 0:
-            assert(self.ResumeLR > 0)
+            self.ResumeId = time.strftime("%Y%m%d%H%M%S_FromEpoch", self.ResumeEpoch)
         else:
             # 生成新的训练Id
             self.TrainingId = time.strftime("%Y%m%d%H%M%S", time.localtime())
@@ -107,6 +107,14 @@ class ClassifyTraining_Settings:
     def from_json_file(strJson: str) -> 'ClassifyTraining_Settings':
         with open(strJson, 'r') as f:
             return ClassifyTraining_Settings.from_json(f.read())
+
+    def get_best_checkpoint_filename(self) -> str:
+        return '{}_{}_best.pth'.format(self.ProjectName, self.TrainingId)
+
+    def get_log_filename(self) -> str:
+        if self.ResumeEpoch > 0:
+            return '{}_{}_{}_run_log.log'.format(self.ProjectName, self.TrainingId, self.ResumeId)
+        return '{}_{}_run_log.log'.format(self.ProjectName, self.TrainingId)
 
 
 if __name__ == '__main__':

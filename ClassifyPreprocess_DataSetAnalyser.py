@@ -29,6 +29,9 @@ class LabelInfo(object):
 
     @staticmethod
     def get_image_paths(dir_path: str) -> list[str]:
+        '''
+        返回指定目录下所有图片的路径
+        '''
         if os.path.exists(dir_path) and os.path.isdir(dir_path):
             return [os.path.join(dir_path, file) for file in os.listdir(dir_path) if (file.lower().endswith('.bmp') or file.lower().endswith('.jpg') or file.lower().endswith('.png'))]
         return []
@@ -68,6 +71,9 @@ class DatasetAnalyser(object):
 
     @staticmethod
     def ReadFromCsv(filePath: str) -> 'DatasetAnalyser':
+        '''
+        反序列化 csv 文件
+        '''
         labels: List[LabelInfo] = []
         with open(filePath, 'r') as f:
             for i, line in enumerate(f.readlines()):

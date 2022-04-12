@@ -5,6 +5,7 @@ import json
 import time
 import logging
 from tkinter.messagebox import NO
+from typing import Tuple
 import torch
 from types import SimpleNamespace
 from torch import nn, Tensor, optim
@@ -40,7 +41,7 @@ class ITrainer(object):
         self.logger.setLevel(logging.DEBUG)
         log_format = logging.Formatter('%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s')
         # 使用FileHandler输出到文件
-        fh = logging.FileHandler(os.path.join(self.Settings.OutputDirPath, '{}_{}_run_log.log'.format(self.Settings.ProjectName, self.Settings.TrainingId)))
+        fh = logging.FileHandler(os.path.join(self.Settings.OutputDirPath, self.Settings.get_log_filename()))
         fh.setLevel(logging.DEBUG)
         fh.setFormatter(log_format)
         # 使用StreamHandler输出到屏幕
@@ -50,12 +51,6 @@ class ITrainer(object):
         # 添加两个Handler
         self.logger.addHandler(fh)
         self.logger.addHandler(ch)
-
-    # def _get_checkpoint_path(self, epoch: int) -> str:
-    #     dir = os.path.join(self.Settings.OutputDirPath, '{}_checkpoints'.format(self.Settings.TrainingId))
-    #     if not os.path.exists(dir):
-    #         os.makedirs(dir)
-    #     return os.path.join(dir, 'epoch_%d.pth' % epoch)
 
     def save_checkpoint(self, is_best: bool, epoch: int) -> None:
         if self.Settings.UseGpuCount > 1:
@@ -71,7 +66,7 @@ class ITrainer(object):
         torch.save(checkpoint, self.Settings.get_checkpoint_path(epoch))
         if is_best:
             # 保存一个单一完整模型
-            torch.save(self.Model, os.path.join(self.Settings.OutputDirPath, '{}_{}_best.pth').format(self.Settings.ProjectName, self.Settings.TrainingId))
+            torch.save(self.Model, os.path.join(self.Settings.OutputDirPath, self.Settings.get_best_checkpoint_filename()))
 
     def load_checkpoint(self, epoch: int) -> nn.Module:
         '''
@@ -91,12 +86,12 @@ class ITrainer(object):
         '''
         加载最好的模型
         '''
-        best_path = os.path.join(self.Settings.OutputDirPath, '{}_{}_best.pth').format(self.Settings.ProjectName, self.Settings.TrainingId)
+        best_path = os.path.join(self.Settings.OutputDirPath, self.Settings.get_best_checkpoint_filename())
         if not os.path.exists(best_path):
-            self.logger.error("ResumeFrom {} is not exist".format(epoch))
+            self.logger.error("ResumeFrom {} is not exist".format(best_path))
         model = torch.load(best_path)
         if model is None:
-            self.logger.error("ResumeFrom {} is not exist".format(epoch))
+            self.logger.error("ResumeFrom {} is not exist".format(best_path))
             exit(1)
         return model
 
@@ -168,6 +163,38 @@ class ITrainer(object):
         #     param_group['lr'] = lr
         # return lr
         raise NotImplemented
+
+    @abstractmethod
+    def get_data_path_and_label(self) -> tuple[list[str], list[int], list[str], list[int]]:
+        '''
+        从 self.Settings.DatasetLabelInfoCsvPath 中读取训练集和测试集的路径和标签，并返回
+        默认以随机抽取方式划分测试集和训练集，在子类中 override 这个函数，可以实现自己的数据集划分方法
+        '''
+        # 设置训练集和验证集
+        if self.Settings.ResumeEpoch <= 0:
+            # 随机抽 20% 样本作为测试集
+            train_image_paths, train_image_labels, validate_image_paths, validate_image_labels = ClassifyTraining_Dataset.get_train_validate_image_list_random(
+                self.Settings.DatasetLabelInfoCsvPath, validate_ratio=0.2)
+            # 保存训练集、验证集的路径和标签到txt
+            with open(os.path.join(self.Settings.OutputDirPath, '{}_{}_train_image_paths.txt'.format(self.Settings.ProjectName, self.Settings.TrainingId)), 'w') as f:
+                f.write('\n'.join(train_image_paths))
+            with open(os.path.join(self.Settings.OutputDirPath, '{}_{}_train_image_labels.txt'.format(self.Settings.ProjectName, self.Settings.TrainingId)), 'w') as f:
+                f.write('\n'.join([str(x) for x in train_image_labels]))
+            with open(os.path.join(self.Settings.OutputDirPath, '{}_{}_validate_image_paths.txt'.format(self.Settings.ProjectName, self.Settings.TrainingId)), 'w') as f:
+                f.write('\n'.join(validate_image_paths))
+            with open(os.path.join(self.Settings.OutputDirPath, '{}_{}_validate_image_labels.txt'.format(self.Settings.ProjectName, self.Settings.TrainingId)), 'w') as f:
+                f.write('\n'.join([str(x) for x in validate_image_labels]))
+        else:
+            # 从文件中读取训练集和验证集的路径和标签
+            train_image_paths = open(os.path.join(self.Settings.OutputDirPath, '{}_{}_train_image_paths.txt'.format(self.Settings.ProjectName, self.Settings.TrainingId)), 'r').read().splitlines()
+            train_image_labels = [int(x) for x in open(os.path.join(self.Settings.OutputDirPath, '{}_{}_train_image_labels.txt'.format(
+                self.Settings.ProjectName, self.Settings.TrainingId)), 'r').read().splitlines()]
+            validate_image_paths = open(os.path.join(self.Settings.OutputDirPath, '{}_{}_validate_image_paths.txt'.format(
+                self.Settings.ProjectName, self.Settings.TrainingId)), 'r').read().splitlines()
+            validate_image_labels = [int(x) for x in open(os.path.join(self.Settings.OutputDirPath, '{}_{}_validate_image_labels.txt'.format(
+                self.Settings.ProjectName, self.Settings.TrainingId)), 'r').read().splitlines()]
+
+        return train_image_paths, train_image_labels, validate_image_paths, validate_image_labels
 
     @abstractmethod
     def get_dataloader(self, train_image_paths: list, train_image_labels: list, validate_image_paths: list, validate_image_labels: list, input_image_size: int, batch_size: int) -> tuple[TorchDataset, TorchDataset]:
@@ -257,7 +284,6 @@ class ITrainer(object):
             is_best = False
             # 保存训练进度
             self.Settings.ResumeEpoch = current_epoch
-            self.Settings.ResumeLR = self.Optimizer.param_groups[0]['lr']
             self.Settings.to_json_file(self.settings_json_path)
             if loss < self.BestLoss:
                 is_best = True
@@ -286,7 +312,6 @@ class ITrainer(object):
         if self.Settings.UseGpuCount > 0:
             for group in self.Optimizer.param_groups:
                 group.setdefault('initial_lr', self.Settings.LR)
-                group.setdefault('initial_lr', self.Settings.ResumeLR)
 
         # 配置 pytorch 环境
         if self.Settings.UseGpuCount == 0:
@@ -304,17 +329,7 @@ class ITrainer(object):
             self.Model.cuda()
 
         # 设置训练集和验证集
-        train_image_paths, train_image_labels, validate_image_paths, validate_image_labels = ClassifyTraining_Dataset.get_train_validate_image_list(
-            self.Settings.DatasetLabelInfoCsvPath, validate_ratio=0.2)
-        # 保存训练集、验证集的路径和标签到txt
-        with open(os.path.join(self.Settings.OutputDirPath, '{}_{}_train_image_paths.txt'.format(self.Settings.ProjectName, self.Settings.TrainingId)), 'w') as f:
-            f.write('\n'.join(train_image_paths))
-        with open(os.path.join(self.Settings.OutputDirPath, '{}_{}_train_image_labels.txt'.format(self.Settings.ProjectName, self.Settings.TrainingId)), 'w') as f:
-            f.write('\n'.join([str(x) for x in train_image_labels]))
-        with open(os.path.join(self.Settings.OutputDirPath, '{}_{}_validate_image_paths.txt'.format(self.Settings.ProjectName, self.Settings.TrainingId)), 'w') as f:
-            f.write('\n'.join(validate_image_paths))
-        with open(os.path.join(self.Settings.OutputDirPath, '{}_{}_validate_image_labels.txt'.format(self.Settings.ProjectName, self.Settings.TrainingId)), 'w') as f:
-            f.write('\n'.join([str(x) for x in validate_image_labels]))
+        train_image_paths, train_image_labels, validate_image_paths, validate_image_labels = self.get_data_path_and_label()
 
         # 验证所有标签在正确的范围内，即所有标签值都要小于 self.Settings.LabelCount
         if len([item for item in train_image_labels if item >= self.Settings.LabelCount or item < 0]) > 0 or len([item for item in validate_image_labels if item >= self.Settings.LabelCount or item < 0]) > 0:

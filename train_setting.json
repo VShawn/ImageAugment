@@ -11,6 +11,5 @@
     "UseGpuCount": 1,
     "OutputDirPath": "DemoTrained",
     "ResumeEpoch": 0,
-    "ResumeLR": 0.01,
     "LabelCount": 16
 }
