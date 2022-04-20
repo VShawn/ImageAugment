@@ -1,0 +1,1 @@
+python PTH_To_ONNX.py -i QcTrained2\epoch_100.pth -c 3 -s 224

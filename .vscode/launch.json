@@ -60,7 +60,7 @@
       "justMyCode": true,
       "args": [
         "-i",
-        "QcTrained/ModelForDemo_20220331110916_best - 副本.pth",
+        "QcTrained2/ModelForDemo_20220412093744_best.pth",
         "-c",
         "3",
         "-s",

@@ -53,7 +53,7 @@ class ClassifyTraining_Settings:
         开始新的训练，生成新的训练Id
         '''
         if self.ResumeEpoch > 0:
-            self.ResumeId = time.strftime("%Y%m%d%H%M%S_FromEpoch", self.ResumeEpoch)
+            self.ResumeId = time.strftime("%Y%m%d%H%M%S", time.localtime()) + "_FromEpoch{}".format(self.ResumeEpoch)
         else:
             # 生成新的训练Id
             self.TrainingId = time.strftime("%Y%m%d%H%M%S", time.localtime())

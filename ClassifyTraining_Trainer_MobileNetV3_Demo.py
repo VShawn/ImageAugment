@@ -122,8 +122,16 @@ class MobileNetV3Trainer(ITrainer):
         '''
         assert len(train_image_paths) == len(train_image_labels)
         assert len(validate_image_paths) == len(validate_image_labels)
+
+        # 下面的方法读取各个分类的样本数，找到最大样本数，其他分类数量不够样本数的通过随机抽样+随机增强把样本数提升到最大样本数
         tps, tls = ClassifyTraining_Dataset.get_balance_sample_list_by_oversampling(train_image_paths, train_image_labels)
         vps, vls = ClassifyTraining_Dataset.get_balance_sample_list_by_oversampling(validate_image_paths, validate_image_labels)
+        # # 如果不需要将样本数量平衡，则使用下面的代码
+        # tps = train_image_paths
+        # tls = train_image_labels
+        # vps = validate_image_paths
+        # vls = validate_image_labels
+
         # 默认情况下，使用默认的图片预处理步骤，如果需要拓展或者使用自定义的 loader，则在子类中重写本方法
         train_dataset = ClassifyTraining_Dataset(tps, tls, input_image_size, self.read_image_as_rgb_and_preprocess_function)
         validate_dataset = ClassifyTraining_Dataset(vps, vls, input_image_size, self.read_image_as_rgb_and_preprocess_function)
@@ -131,16 +139,6 @@ class MobileNetV3Trainer(ITrainer):
 
 
 if __name__ == '__main__':
-    # s = ClassifyTraining_Settings()
-    # s.set_dataset_path(r'D:\UritWorks\AI\image_preprocess\Augmented')
-    # if os.path.exists(s.OutputDirPath) == False:
-    #     os.makedirs(s.OutputDirPath)
-    # setting_path = os.path.join(s.OutputDirPath, 'demo_train_setting.json')
-    # s.to_json_file(setting_path)
-    # t = ITrainer(setting_path)
-    # t.train()
-    # t = MobileNetV3Trainer(r'D:\UritWorks\AI\image_preprocess\DemoTrained\demo_train_setting.json_20220311113655.json')
-    # t.train()
 
     # 读取输入参数
     argv = sys.argv[1:]

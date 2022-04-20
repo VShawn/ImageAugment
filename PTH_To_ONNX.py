@@ -1,3 +1,4 @@
+from statistics import mode
 import sys
 import getopt
 import os
@@ -17,10 +18,13 @@ class pth_to_onnx(object):
     def ToOnnx(pth_path: str, input_channel: int, intput_size: int, out_onnx_path: str = ""):
         # 加载模型
         model = torch.load(pth_path)
-        if model is dict and 'model' in model and 'model_state_dict' in model:
-            checkpoint = model
-            model = checkpoint['model']  # 提取网络结构
-            model.load_state_dict(checkpoint['model_state_dict'])  # 加载网络权重参数
+        try:
+            if 'model' in model and 'model_state_dict' in model:
+                checkpoint = model
+                model = checkpoint['model']  # 提取网络结构
+                model.load_state_dict(checkpoint['model_state_dict'])  # 加载网络权重参数
+        except:
+            pass
 
         # print(model)
 
